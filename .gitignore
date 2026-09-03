@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Modelo de MediaPipe: se descarga solo la primera vez que se corre
+# cualquier script (ver config.asegurar_modelo_landmarker o el mismo
+# patrón en experimentos/probar_deteccion_guante.py), no hace falta
+# versionarlo.
+**/hand_landmarker.task
+
+# Dataset externo (LSA64, ~1.5GB) y features ya extraídas: demasiado
+# pesados para git y regenerables. Ver datos/README.md y
+# datos/externos/organizar_lsa64.py para reconstruir esta carpeta.
+datos/externos/
+datos/procesado/
+
+# Salidas de prueba/debug (videos anotados, no son parte del proyecto)
+experimentos/salidas_prueba_guante/
+experimentos/deteccion_*.mp4
+
+# SO
+Thumbs.db
+.DS_Store
