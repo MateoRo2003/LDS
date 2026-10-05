@@ -5,7 +5,7 @@ significado) por cada seña del vocabulario actual.
 
 Uso:
     python generar_fichas.py colores
-    python generar_fichas.py prueba
+    python generar_fichas.py palabras
 """
 import sys
 import os

@@ -1,6 +1,6 @@
 """
-Entrena un clasificador (Bi-LSTM chico) sobre el dataset de landmarks
-de una categoria (generado por extraer_landmarks.py --categoria X), y
+Entrena un clasificador (Bi-LSTM chico) para una categoria, a partir de
+los landmarks crudos que dejo extraer_landmarks.py --categoria X, y
 guarda el modelo entrenado para esa categoria.
 
 Separa entrenamiento y validacion POR PERSONA (no al azar): dejamos
@@ -9,93 +9,184 @@ afuera del entrenamiento a las 2 ultimas personas de LSA64 (sujetos 9 y
 expo — alguien que el modelo nunca vio grabar — en vez de inflar la
 metrica validando con la misma gente que ya vio entrenando.
 
+Ademas de las señas de la categoria, el modelo aprende una clase
+"nada" (config.CLASE_NADA) con dos tipos de ejemplos: otras señas de
+LSA64 y manos quietas. Sin eso, cualquier mano frente a la camara
+termina siendo alguna palabra de la categoria.
+
 Uso:
     python entrenar_modelo.py --categoria colores
-    python entrenar_modelo.py --categoria prueba   (default)
 """
 import argparse
 import json
 import os
-import re
 
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import classification_report, confusion_matrix
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import (
-    Bidirectional, Dense, Dropout, LSTM, Masking,
-)
+from tensorflow.keras.layers import Bidirectional, Dense, Dropout, Input, LSTM
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.utils import to_categorical
 
 import config
+from extraer_landmarks import clips_de_categoria, partes_de_nombre, ruta_crudo
+from landmarks import features_de_secuencia, resamplear_secuencia
 
 PERSONAS_VALIDACION = {9, 10}  # sujetos de LSA64 reservados para validar
 
+EPOCAS = 150
+PACIENCIA = 25
+COPIAS_POR_SENA = 4       # versiones aumentadas de cada clip de la categoria, por epoca
+QUIETAS_POR_CLIP = 0.4    # ejemplos de "mano quieta" por cada clip disponible
 
-def persona_de_nombre(nombre_archivo):
-    # nombre_archivo tipo "051-thanks/051_005_003.mp4" -> persona = 005
-    m = re.search(r"_(\d{3})_\d{3}\.mp4$", nombre_archivo)
-    return int(m.group(1)) if m else None
+M = config.FEATURES_POR_MANO
+FORMA = slice(0, M - 3)
+POS = slice(M - 3, M - 1)
+
+
+def cargar_clips(categoria):
+    """-> lista de (features (T, F), indice de clase, persona)."""
+    vocab = config.vocabulario(categoria)
+    clips, faltan, sin_cuerpo = [], 0, 0
+    for carpeta, nombre in clips_de_categoria(categoria):
+        ruta = ruta_crudo(carpeta, nombre)
+        if not os.path.exists(ruta):
+            faltan += 1
+            continue
+        d = np.load(ruta)
+        feats = features_de_secuencia(d["manos"], d["presente"], d["cuerpo"], d["cuerpo_ok"], float(d["aspecto"]))
+        if feats is None:
+            sin_cuerpo += 1
+            continue
+        clase = vocab.index(carpeta) if carpeta in vocab else len(vocab)
+        clips.append((feats, clase, partes_de_nombre(nombre)[0]))
+    if faltan:
+        raise SystemExit(f"Faltan {faltan} clips sin extraer — corré primero: "
+                         f"python extraer_landmarks.py --categoria {categoria}")
+    if sin_cuerpo:
+        print(f"[AVISO] {sin_cuerpo} clips descartados: no se detecto el cuerpo en ningun frame")
+    return clips
+
+
+def espejar(sec):
+    """Como si la seña la hiciera un zurdo: invierte x y cruza las manos."""
+    s = sec.reshape(len(sec), 2, M).copy()
+    s[:, :, 0:M - 3:3] *= -1
+    s[:, :, M - 3] *= -1
+    return s[:, ::-1].reshape(len(sec), -1)
+
+
+def aumentar(feats, rng):
+    """
+    Variante al azar de un clip, ya en LONGITUD_SECUENCIA frames. Imita
+    lo que cambia en vivo: la seña no arranca ni termina justo en los
+    bordes de la ventana, cada persona la hace en un lugar y tamaño
+    apenas distinto, y la deteccion de la mano tiembla o se pierde.
+    """
+    total = len(feats)
+    desde = int(rng.uniform(0, 0.2) * total)
+    hasta = total - int(rng.uniform(0, 0.2) * total)
+    sec = resamplear_secuencia(feats[desde:max(hasta, desde + 2)])
+    if rng.random() < 0.5:
+        sec = espejar(sec)
+
+    s = sec.reshape(len(sec), 2, M).copy()
+    presente = s[:, :, -1:].copy()
+
+    angulo = np.deg2rad(rng.normal(0, 8))
+    cos, sen = np.cos(angulo), np.sin(angulo)
+    forma = s[:, :, FORMA].reshape(len(s), 2, -1, 3)
+    x, y = forma[..., 0].copy(), forma[..., 1].copy()
+    forma[..., 0] = cos * x - sen * y
+    forma[..., 1] = sen * x + cos * y
+    forma *= rng.uniform(0.9, 1.1)
+    forma += rng.normal(0, 0.03, forma.shape)
+    s[:, :, FORMA] = forma.reshape(len(s), 2, -1)
+
+    s[:, :, POS] = s[:, :, POS] * rng.uniform(0.85, 1.2) + rng.normal(0, 0.12, 2)
+    s[:, :, POS] += rng.normal(0, 0.02, s[:, :, POS].shape)
+
+    if rng.random() < 0.3:  # la mano se pierde unos frames
+        inicio = rng.integers(0, len(s) - 3)
+        presente[inicio:inicio + rng.integers(1, 4), rng.integers(0, 2)] = 0
+
+    return (s * presente).reshape(len(sec), -1).astype(np.float32)
+
+
+def mano_quieta(feats, rng):
+    """Un frame con mano, repetido: una pose sostenida no es una seña."""
+    con_mano = np.flatnonzero(feats.reshape(len(feats), 2, M)[:, :, -1].any(axis=1))
+    if len(con_mano) == 0:
+        return None
+    frame = feats[rng.choice(con_mano)]
+    return aumentar(np.repeat(frame[None], config.LONGITUD_SECUENCIA, axis=0), rng)
+
+
+def armar_conjunto(clips, clase_nada, rng, copias):
+    X, y = [], []
+    for feats, clase, _ in clips:
+        for _ in range(copias if clase != clase_nada else 1):
+            X.append(aumentar(feats, rng))
+            y.append(clase)
+    for i in rng.choice(len(clips), int(len(clips) * QUIETAS_POR_CLIP), replace=False):
+        quieta = mano_quieta(clips[i][0], rng)
+        if quieta is not None:
+            X.append(quieta)
+            y.append(clase_nada)
+    return np.array(X), np.array(y)
 
 
 def main(categoria):
-    ruta_dataset = config.ruta_dataset(categoria)
-    if not os.path.exists(ruta_dataset):
-        raise FileNotFoundError(
-            f"No existe {ruta_dataset} — corré primero: python extraer_landmarks.py --categoria {categoria}"
-        )
+    vocab = config.vocabulario(categoria)
+    clases = list(vocab) + [config.CLASE_NADA]
+    clase_nada = len(vocab)
 
-    data = np.load(ruta_dataset, allow_pickle=True)
-    X, y = data["X"], data["y"]
-    clases = list(data["clases"])
-    nombres = list(data["nombres_archivo"])
+    clips = cargar_clips(categoria)
+    train = [c for c in clips if c[2] not in PERSONAS_VALIDACION]
+    val = [c for c in clips if c[2] in PERSONAS_VALIDACION]
 
-    personas = np.array([persona_de_nombre(n) for n in nombres])
-    es_val = np.isin(personas, list(PERSONAS_VALIDACION))
-
-    X_train, y_train = X[~es_val], y[~es_val]
-    X_val, y_val = X[es_val], y[es_val]
+    # Validacion fija: los clips enteros sin tocar + manos quietas.
+    rng_val = np.random.default_rng(0)
+    X_val = [resamplear_secuencia(f) for f, _, _ in val]
+    y_val = [c for _, c, _ in val]
+    for feats, _, _ in val[::3]:
+        quieta = mano_quieta(feats, rng_val)
+        if quieta is not None:
+            X_val.append(quieta)
+            y_val.append(clase_nada)
+    X_val, y_val = np.array(X_val), np.array(y_val)
 
     print(f"Categoria: {categoria}")
-    print(f"Train: {X_train.shape[0]} clips | Val (personas {sorted(PERSONAS_VALIDACION)}): {X_val.shape[0]} clips")
+    print(f"Train: {len(train)} clips | Val (personas {sorted(PERSONAS_VALIDACION)}): {len(X_val)} secuencias")
     print(f"Clases ({len(clases)}): {clases}")
 
-    # Normalizacion simple: las coordenadas de MediaPipe ya vienen en
-    # [0,1] (x,y) / rango chico (z), pero centramos y escalamos igual
-    # para que la red converja mas rapido.
-    media = X_train.mean(axis=(0, 1), keepdims=True)
-    std = X_train.std(axis=(0, 1), keepdims=True) + 1e-6
-    X_train = (X_train - media) / std
-    X_val = (X_val - media) / std
-
-    num_clases = len(clases)
-    y_train_oh = to_categorical(y_train, num_clases)
-    y_val_oh = to_categorical(y_val, num_clases)
-
     modelo = Sequential([
-        Masking(mask_value=0.0, input_shape=(config.LONGITUD_SECUENCIA, config.FEATURES_POR_FRAME)),
+        Input(shape=(config.LONGITUD_SECUENCIA, config.FEATURES_POR_FRAME)),
         Bidirectional(LSTM(64, return_sequences=True, dropout=0.3)),
         Bidirectional(LSTM(32, dropout=0.3)),
         Dense(64, activation="relu"),
         Dropout(0.4),
-        Dense(num_clases, activation="softmax"),
+        Dense(len(clases), activation="softmax"),
     ])
-    modelo.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    modelo.summary()
+    modelo.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
-    parada = EarlyStopping(monitor="val_accuracy", patience=15, restore_best_weights=True)
+    # Cada epoca ve versiones aumentadas nuevas de los mismos clips.
+    rng = np.random.default_rng(1)
+    mejor_acc, mejores_pesos, sin_mejorar = -1.0, None, 0
+    for epoca in range(1, EPOCAS + 1):
+        X_train, y_train = armar_conjunto(train, clase_nada, rng, COPIAS_POR_SENA)
+        h = modelo.fit(X_train, y_train, validation_data=(X_val, y_val),
+                       epochs=1, batch_size=32, verbose=0).history
+        acc = h["val_accuracy"][0]
+        print(f"epoca {epoca:3d}  loss {h['loss'][0]:.3f}  acc {h['accuracy'][0]:.3f}  val_acc {acc:.3f}", flush=True)
+        if acc > mejor_acc:
+            mejor_acc, mejores_pesos, sin_mejorar = acc, modelo.get_weights(), 0
+        else:
+            sin_mejorar += 1
+            if sin_mejorar >= PACIENCIA:
+                break
+    modelo.set_weights(mejores_pesos)
 
-    modelo.fit(
-        X_train, y_train_oh,
-        validation_data=(X_val, y_val_oh),
-        epochs=100,
-        batch_size=16,
-        callbacks=[parada],
-        verbose=2,
-    )
-
-    nombres_legibles = [config.palabra_es(c) for c in clases]
+    nombres_legibles = [config.palabra_es(c) for c in vocab] + ["(nada)"]
 
     print("\n=== Evaluacion en validacion (personas nunca vistas en train) ===")
     y_pred = np.argmax(modelo.predict(X_val, verbose=0), axis=1)
@@ -110,18 +201,14 @@ def main(categoria):
     modelo.save(ruta_modelo)
 
     with open(ruta_etiquetas, "w", encoding="utf-8") as f:
-        json.dump({
-            "clases": clases,
-            "media": media.tolist(),
-            "std": std.tolist(),
-        }, f, ensure_ascii=False, indent=2)
+        json.dump({"clases": clases}, f, ensure_ascii=False, indent=2)
 
     print(f"\nModelo guardado en {ruta_modelo}")
-    print(f"Etiquetas + normalizacion guardadas en {ruta_etiquetas}")
+    print(f"Etiquetas guardadas en {ruta_etiquetas}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--categoria", default="prueba", help="Nombre de categoria en config.CATEGORIAS")
+    parser.add_argument("--categoria", required=True, help="Nombre de categoria en config.CATEGORIAS")
     args = parser.parse_args()
     main(args.categoria)

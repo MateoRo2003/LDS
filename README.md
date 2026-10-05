@@ -1,6 +1,6 @@
 # Reconocedor de Lengua de Señas Argentina (LSA)
 
-Proyecto para la exposición de Informática: reconocimiento de señas de LSA en vivo por webcam, entrenado con landmarks de mano (MediaPipe) + una red Bi-LSTM.
+Proyecto para la exposición de Informática: reconocimiento de señas de LSA en vivo por webcam, entrenado con landmarks de mano y cuerpo (MediaPipe) + una red Bi-LSTM.
 
 ## Estructura
 
@@ -41,7 +41,7 @@ python extraer_landmarks.py --categoria colores
 python entrenar_modelo.py --categoria colores
 ```
 
-Repetir para `prueba`, o para cualquier categoría nueva que agreguen a `config.py`.
+Repetir para `palabras`, o para cualquier categoría nueva que agreguen a `config.py`.
 
 ### 4. Correr la app
 
@@ -49,11 +49,11 @@ Repetir para `prueba`, o para cualquier categoría nueva que agreguen a `config.
 python app.py
 ```
 
-Abre un menú con un botón por cada categoría ya entrenada — se elige una, se abre la cámara y reconoce en vivo. Más detalle en [app-python/README.md](app-python/README.md).
+Abre la interfaz (SIGNALIS) con la cámara en vivo; las categorías se eligen y se cambian desde ahí mismo. Más detalle en [app-python/README.md](app-python/README.md).
 
 ## Vocabulario actual
 
-16 señas (8 "prueba" + 8 "colores"), todas del dataset LSA64 — el equipo todavía no grabó ni eligió su propia lista final.
+32 señas de LSA64: 8 "colores" + 24 "palabras". El "abecedario" (27 letras) y los "números" (0 al 10) salen de videos de personas mostrando cada seña, y se les puede sumar grabaciones hechas desde la propia app. Ver [app-python/README.md](app-python/README.md).
 
 ## Estado del proyecto
 

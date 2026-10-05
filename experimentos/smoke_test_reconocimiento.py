@@ -1,67 +1,88 @@
 """
-Prueba de humo: corre el MISMO codigo que usa reconocer_en_vivo.py
-(cargar_modelo, features_de_resultado, resamplear_secuencia) pero
-alimentado con un video en vez de la webcam — para verificar que la
-app en vivo no tiene bugs sin necesitar una camara fisica.
+Prueba de humo del reconocimiento EN VIVO sin necesitar una camara: le
+pasa clips a SeguidorDeSena frame por frame, con sus tiempos reales,
+igual que se los pasa la webcam en app.py (ventana deslizante, umbral,
+suavizado y todo). No es lo mismo que evaluar el modelo con el clip
+entero y recortado, que es lo que mide entrenar_modelo.py.
+
+Usa los clips de las personas que el modelo nunca vio (las de
+validacion) y reporta dos cosas:
+- señas de la categoria: cuantas reconoce bien, cuantas confunde y
+  cuantas deja pasar sin decir nada;
+- señas de OTRAS categorias: cuantas veces se inventa una palabra.
 
 Uso:
-    python smoke_test_reconocimiento.py ruta/al/video.mp4 palabra_esperada
+    python smoke_test_reconocimiento.py colores
 """
-import sys
 import os
+import sys
+from collections import Counter
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app-python"))
 
-import cv2
 import numpy as np
-import mediapipe as mp
 
 import config
-from landmarks import crear_landmarker, features_de_resultado, resamplear_secuencia
-from reconocer_en_vivo import cargar_modelo
+from entrenar_modelo import PERSONAS_VALIDACION
+from extraer_landmarks import clips_de_categoria, partes_de_nombre, ruta_crudo
+from reconocedor import Reconocedor, SeguidorDeSena, SIN_MANO_S
+
+UMBRAL = 0.6
 
 
-def main(video_path, palabra_esperada):
-    modelo, clases, media, std = cargar_modelo()
-    landmarker = crear_landmarker()
+def palabras_detectadas(modelo, clases, crudo):
+    """Pasa un clip como si fuera la camara y devuelve las señas que fue mostrando."""
+    seguidor = SeguidorDeSena(modelo, clases, float(crudo["aspecto"]))
+    vistas = []
+    total = len(crudo["manos"])
+    # al final se agrega un rato sin manos, como cuando la persona las baja
+    cola = int((SIN_MANO_S + 0.3) * config.FPS_OBJETIVO)
+    for i in range(total + cola):
+        if i < total:
+            frame = (crudo["manos"][i], crudo["presente"][i], crudo["cuerpo"][i], crudo["cuerpo_ok"][i])
+        else:
+            frame = (np.zeros_like(crudo["manos"][0]), np.zeros(2, dtype=bool), crudo["cuerpo"][-1], True)
+        seguidor.procesar(i / config.FPS_OBJETIVO, frame, UMBRAL)
+        if seguidor.nueva:
+            vistas.append(clases[seguidor.detectada[0]])
+    return vistas
 
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS) or 25
-    ms_por_frame = 1000.0 / fps
 
-    buffer = []
-    timestamp_ms = 0
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            break
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        resultado = landmarker.detect_for_video(mp_image, int(timestamp_ms))
-        timestamp_ms += ms_por_frame
-        buffer.append(features_de_resultado(resultado))
+def main(categoria):
+    vocab = config.vocabulario(categoria)
+    modelo, clases, _ = Reconocedor()._cargar_modelo(categoria)
 
-    cap.release()
-    landmarker.close()
+    resultado = Counter()
+    confusiones = Counter()
+    for carpeta, nombre in clips_de_categoria(categoria):
+        if partes_de_nombre(nombre)[0] not in PERSONAS_VALIDACION:
+            continue
+        vistas = palabras_detectadas(modelo, clases, np.load(ruta_crudo(carpeta, nombre)))
+        if carpeta in vocab:
+            if vistas == [carpeta]:
+                resultado["bien"] += 1
+            elif not vistas:
+                resultado["sin respuesta"] += 1
+            else:
+                resultado["mal"] += 1
+                confusiones[(config.palabra_es(carpeta), tuple(config.palabra_es(v) for v in vistas))] += 1
+        else:
+            resultado["otra seña: callado" if not vistas else "otra seña: invento una palabra"] += 1
 
-    secuencia = resamplear_secuencia(buffer, config.LONGITUD_SECUENCIA)
-    secuencia_norm = (secuencia - media[0]) / std[0]
-    entrada = secuencia_norm[np.newaxis, ...]
-
-    probs = modelo.predict(entrada, verbose=0)[0]
-    idx = int(np.argmax(probs))
-    predicha = config.palabra_legible(clases[idx])
-    confianza = float(probs[idx])
-
-    print(f"\nVideo: {video_path}")
-    print(f"Esperada: {palabra_esperada}")
-    print(f"Predicha: {predicha} ({confianza*100:.1f}%)")
-    print(f"Resultado: {'OK' if predicha == palabra_esperada else 'FALLO'}")
-
-    print("\nTodas las probabilidades:")
-    for c, p in sorted(zip(clases, probs), key=lambda x: -x[1]):
-        print(f"  {config.palabra_legible(c):10s} {p*100:5.1f}%")
+    de_categoria = resultado["bien"] + resultado["mal"] + resultado["sin respuesta"]
+    otras = resultado["otra seña: callado"] + resultado["otra seña: invento una palabra"]
+    print(f"\nCategoria '{categoria}', simulando la camara con personas {sorted(PERSONAS_VALIDACION)}:")
+    print(f"  Señas de la categoria ({de_categoria} clips):")
+    for clave in ("bien", "mal", "sin respuesta"):
+        print(f"    {clave:14s} {resultado[clave]:3d}  ({100 * resultado[clave] / de_categoria:.0f}%)")
+    print(f"  Señas que NO son de la categoria ({otras} clips):")
+    print(f"    se queda callado        {resultado['otra seña: callado']:3d}  ({100 * resultado['otra seña: callado'] / otras:.0f}%)")
+    print(f"    inventa una palabra     {resultado['otra seña: invento una palabra']:3d}")
+    if confusiones:
+        print("  Confusiones (seña hecha -> lo que mostro):")
+        for (real, vistas), n in confusiones.most_common():
+            print(f"    {real} -> {', '.join(vistas)}  x{n}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1])

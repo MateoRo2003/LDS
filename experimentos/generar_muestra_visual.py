@@ -6,7 +6,7 @@ lo que corresponde en cada palabra.
 
 Uso:
     python generar_muestra_visual.py colores
-    python generar_muestra_visual.py prueba
+    python generar_muestra_visual.py palabras
 """
 import sys
 import os

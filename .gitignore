@@ -23,3 +23,12 @@ experimentos/deteccion_*.mp4
 # SO
 Thumbs.db
 .DS_Store
+
+# Idem para el modelo de deteccion de cuerpo
+**/pose_landmarker_lite.task
+
+# Paquete para repartir (se arma con armar_paquete.py) y entorno local
+SIGNALIS-estudiantes.zip
+
+# Version web: videos de prueba (salen de los datasets, no se versionan)
+signalis-web/pruebas/*.mp4
