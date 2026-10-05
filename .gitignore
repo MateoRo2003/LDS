@@ -32,3 +32,6 @@ SIGNALIS-estudiantes.zip
 
 # Version web: videos de prueba (salen de los datasets, no se versionan)
 signalis-web/pruebas/*.mp4
+
+# ...pero la version web si los necesita publicados junto a la pagina
+!signalis-web/modelos/*.task
