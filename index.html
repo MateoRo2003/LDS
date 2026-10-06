@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGNALIS - Reconocimiento de Lengua de Señas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12.5 2C11.1 2 10 3.1 10 4.5V11H8.5C7.1 11 6 12.1 6 13.5V19C6 20.7 7.3 22 9 22H15C16.7 22 18 20.7 18 19V4.5C18 3.1 16.9 2 15.5 2H12.5ZM12 4H15.5C15.8 4 16 4.2 16 4.5V11H12V4ZM8 13.5C8 13.2 8.2 13 8.5 13H10V19H9C8.4 19 8 18.6 8 18V13.5ZM12 19V13H16V19C16 19.6 15.6 20 15 20H12V19Z"/>
+          <path d="M7 8.5C7 7.7 6.3 7 5.5 7S4 7.7 4 8.5 4.7 10 5.5 10 7 9.3 7 8.5Z"/>
+        </svg>
+      </div>
+      <div class="logo-title">SIGNALIS</div>
+      <div class="logo-subtitle">Reconocimiento de<br>Lengua de Señas</div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item" data-vista="inicio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+          <path d="M9 21V12h6v9"/>
+        </svg>
+        Inicio
+      </button>
+      <button class="nav-item" data-cat="abecedario">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <text x="12" y="16" text-anchor="middle" font-size="11" fill="currentColor" stroke="none" font-weight="700">A</text>
+        </svg>
+        Abecedario
+      </button>
+      <button class="nav-item" data-cat="numeros">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="16" rx="2"/>
+          <text x="12" y="15.5" text-anchor="middle" font-size="9" fill="currentColor" stroke="none" font-weight="600">123</text>
+        </svg>
+        Números
+      </button>
+      <button class="nav-item" data-cat="colores">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="8" cy="10" r="3"/>
+          <circle cx="16" cy="10" r="3"/>
+          <circle cx="12" cy="16" r="3"/>
+        </svg>
+        Colores
+      </button>
+      <button class="nav-item" data-cat="palabras">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+        Palabras
+      </button>
+      <button class="nav-item" data-vista="ajustes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Ajustes
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="status-dot" id="punto-sistema"></span>
+      <span id="texto-sistema">Iniciando…</span>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <header class="header">
+      <div class="header-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 7l-7 5 7 5V7z"/>
+          <rect x="1" y="5" width="15" height="14" rx="2"/>
+        </svg>
+        <span id="titulo-vista">Reconocimiento en tiempo real</span>
+      </div>
+      <div class="header-controles">
+      <label class="header-right" title="Cámara que se usa para reconocer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 7l-7 5 7 5V7z"/>
+          <rect x="1" y="5" width="15" height="14" rx="2"/>
+        </svg>
+        <select id="selector-camara" aria-label="Cámara"></select>
+      </label>
+      <button class="header-right" id="boton-tema">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <span id="texto-tema">Modo claro</span>
+      </button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Left: Camera + Categories -->
+      <div class="camera-section">
+        <div class="camera-box">
+          <div class="camara-imagen" id="camara-imagen">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="lienzo"></canvas>
+          </div>
+          <div class="camera-aviso" id="aviso-camara">
+            <p id="aviso-texto">Cargando el reconocimiento…</p>
+            <button class="boton" id="boton-camara" hidden>Activar la cámara</button>
+          </div>
+
+          <div class="live-badge">
+            <span class="live-dot"></span>
+            En vivo
+          </div>
+
+          <!-- Frame corners -->
+          <div class="frame-corner tl"></div>
+          <div class="frame-corner tr"></div>
+          <div class="frame-corner bl"></div>
+          <div class="frame-corner br"></div>
+        </div>
+
+        <!-- Categories -->
+        <div class="categories" id="panel-categorias">
+          <h3>Explorar categorías</h3>
+          <div class="cat-grid">
+            <button class="cat-card" data-cat="abecedario">
+              <div class="icon">A</div>
+              <div class="label">Abecedario</div>
+            </button>
+            <button class="cat-card" data-cat="numeros">
+              <div class="icon">123</div>
+              <div class="label">Números</div>
+            </button>
+            <button class="cat-card" data-cat="colores">
+              <div class="icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="7" cy="9" r="3.5"/>
+                  <circle cx="17" cy="9" r="3.5"/>
+                  <circle cx="12" cy="16.5" r="3.5"/>
+                </svg>
+              </div>
+              <div class="label">Colores</div>
+            </button>
+            <button class="cat-card" data-cat="palabras">
+              <div class="icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+              </div>
+              <div class="label">Palabras</div>
+            </button>
+          </div>
+
+          <div class="senas" id="panel-senas" hidden>
+            <h3 id="titulo-senas"></h3>
+            <div class="senas-lista" id="lista-senas"></div>
+          </div>
+        </div>
+
+        <!-- Ajustes (reemplaza a las categorias cuando se elige "Ajustes") -->
+        <div class="categories" id="panel-ajustes" hidden>
+          <h3>Ajustes</h3>
+          <label class="ajuste">
+            <span>Confianza mínima para aceptar una seña: <strong id="valor-umbral"></strong></span>
+            <input type="range" id="ajuste-umbral" min="30" max="95" step="5">
+          </label>
+          <label class="ajuste ajuste-check">
+            <input type="checkbox" id="ajuste-esqueleto">
+            <span>Dibujar los puntos de la mano sobre la imagen</span>
+          </label>
+          <label class="ajuste ajuste-check">
+            <input type="checkbox" id="ajuste-espejo">
+            <span>Mostrar la imagen como un espejo</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="right-panel">
+        <!-- Detected sign -->
+        <div class="detected-card" id="tarjeta-detectada">
+          <h3>Seña detectada</h3>
+          <div class="sign-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12.5 2C11.1 2 10 3.1 10 4.5V11H8.5C7.1 11 6 12.1 6 13.5V19C6 20.7 7.3 22 9 22H15C16.7 22 18 20.7 18 19V4.5C18 3.1 16.9 2 15.5 2H12.5Z"/>
+            </svg>
+          </div>
+          <div class="sign-word" id="palabra">—</div>
+          <div class="sign-type" id="tipo">&nbsp;</div>
+
+          <div class="confidence-row">
+            <span>Confianza</span>
+            <span id="confianza-texto">0%</span>
+          </div>
+          <div class="confidence-bar">
+            <div class="confidence-fill" id="confianza-barra"></div>
+          </div>
+
+          <div class="practica" id="practica" hidden></div>
+
+          <div class="detecting">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span id="situacion">Iniciando…</span>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="history-card">
+          <h3>Historial reciente</h3>
+          <div id="historial"></div>
+          <p class="historial-vacio" id="historial-vacio">Todavía no se reconoció ninguna seña.</p>
+          <div class="history-acciones">
+            <button class="history-link" id="historial-ver">Ver historial completo ›</button>
+            <button class="history-link" id="historial-limpiar">Limpiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="16" x2="12" y2="12"/>
+        <line x1="12" y1="8" x2="12.01" y2="8"/>
+      </svg>
+      Ponete de frente, con la cara y las manos dentro del marco, y hacé la seña. La imagen de tu cámara no sale de tu computadora.
+    </div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
