@@ -17,6 +17,41 @@ Este repositorio tiene los archivos listos para subir al campus.
 
 Tienen que quedar 17 archivos. Si falta alguno o queda en otra carpeta, la aplicación no carga.
 
+## Estructura de carpetas
+
+Así tiene que verse en el campus, con los mismos nombres y en minúsculas:
+
+```
+index.html
+style.css
+app.js
+motor.js
+modelos/
+├── abecedario.json
+├── numeros.json
+├── colores.json
+├── colores.parte1.json
+├── colores.parte2.json
+├── colores.parte3.json
+├── colores.parte4.json
+├── palabras.json
+├── palabras.parte1.json
+├── palabras.parte2.json
+├── palabras.parte3.json
+└── palabras.parte4.json
+vendor/
+└── tasks-vision/
+    └── vision_bundle.js
+```
+
+Qué es cada cosa:
+
+- `index.html` y `style.css`: la pantalla.
+- `app.js`: la cámara y los botones.
+- `motor.js`: el reconocimiento de las señas.
+- `modelos/`: lo que la inteligencia artificial aprendió, un modelo por categoría. Los de colores y palabras son grandes y van partidos en cuatro archivos.
+- `vendor/tasks-vision/`: MediaPipe, la librería que ubica las manos en la imagen. Ojo: es una carpeta dentro de otra.
+
 ## Cómo usarla
 
 1. Abrila en Chrome o Edge.
