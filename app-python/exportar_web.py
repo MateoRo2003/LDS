@@ -29,6 +29,9 @@ from landmarks import features_de_secuencia, posturas, resamplear_secuencia
 from reconocedor import SeguidorDeSena, categorias_disponibles
 
 DESTINO = os.path.join(config.PROYECTO, "signalis-web")
+# Hay sitios donde alojar la pagina que no aceptan archivos grandes: los
+# modelos que pasan de este tamaño se parten en varios .json.
+TAMANO_PARTE = 250_000
 UMBRAL = 0.6
 FPS = 30
 
@@ -57,6 +60,22 @@ def capas_de(modelo):
         elif not isinstance(capa, tf.keras.layers.Dropout):  # dropout no hace nada al reconocer
             raise ValueError(f"Capa que la version web no sabe calcular: {type(capa).__name__}")
     return capas
+
+
+def guardar_modelo(categoria, datos):
+    """Escribe modelos/<categoria>.json; si es grande, partido en .parteN.json."""
+    carpeta = os.path.join(DESTINO, "modelos")
+    for vieja in glob.glob(os.path.join(carpeta, f"{categoria}.parte*.json")):
+        os.remove(vieja)
+    texto = json.dumps(datos, ensure_ascii=False)
+    partes = [texto[i:i + TAMANO_PARTE] for i in range(0, len(texto), TAMANO_PARTE)]
+    with open(os.path.join(carpeta, categoria + ".json"), "w", encoding="utf-8") as f:
+        f.write(texto if len(partes) == 1 else json.dumps({"partes": len(partes)}))
+    if len(partes) > 1:
+        for n, parte in enumerate(partes, 1):
+            with open(os.path.join(carpeta, f"{categoria}.parte{n}.json"), "w", encoding="utf-8") as f:
+                json.dump([parte], f, ensure_ascii=False)
+    return len(partes)
 
 
 def lista(arr, decimales=6):
@@ -125,14 +144,13 @@ def main():
         clases = etiquetas["clases"]
         estatica = etiquetas.get("tipo") == "estatica"
         titulo, tipo_sena = config.INFO_CATEGORIAS[categoria]
-        with open(os.path.join(DESTINO, "modelos", categoria + ".json"), "w", encoding="utf-8") as f:
-            json.dump({
-                "id": categoria, "titulo": titulo, "tipo_sena": tipo_sena, "estatica": estatica,
-                "clases": clases,
-                "nombres": [None if c == config.CLASE_NADA else config.palabra_es(c) for c in clases],
-                "capas": capas_de(modelo),
-            }, f, ensure_ascii=False)
-        print(f"{categoria}: {len(clases)} clases exportadas")
+        partes = guardar_modelo(categoria, {
+            "id": categoria, "titulo": titulo, "tipo_sena": tipo_sena, "estatica": estatica,
+            "clases": clases,
+            "nombres": [None if c == config.CLASE_NADA else config.palabra_es(c) for c in clases],
+            "capas": capas_de(modelo),
+        })
+        print(f"{categoria}: {len(clases)} clases exportadas" + (f", en {partes} partes" if partes > 1 else ""))
 
         if estatica:
             video_id, (desde, hasta) = {"abecedario": ("bhzaMJw_NbE", (16.0, 62.0)),

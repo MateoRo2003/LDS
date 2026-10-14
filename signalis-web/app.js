@@ -63,28 +63,81 @@ function recordado(clave) {
 // Reconocimiento
 // ---------------------------------------------------------------------
 
+// Un modelo puede venir en un solo .json o, si es grande, partido en
+// varios (modelos/<id>.parte1.json, ...): hay sitios que no aceptan
+// archivos grandes. El .json principal dice en cuantas partes esta.
+async function leerModelo(id) {
+  const respuesta = await fetch(`modelos/${id}.json`);
+  if (!respuesta.ok) throw new Error(`falta el modelo ${id}`);
+  const datos = await respuesta.json();
+  if (!datos.partes) return datos;
+  const partes = await Promise.all(Array.from({ length: datos.partes }, async (_, n) => {
+    const parte = await fetch(`modelos/${id}.parte${n + 1}.json`);
+    return (await parte.json())[0];
+  }));
+  return JSON.parse(partes.join(''));
+}
+
 async function cargarModelos() {
   await Promise.all(CATEGORIAS.map(async (id) => {
     try {
-      const respuesta = await fetch(`modelos/${id}.json`);
-      if (respuesta.ok) modelos[id] = new Modelo(await respuesta.json());
+      modelos[id] = new Modelo(await leerModelo(id));
     } catch (e) { /* esa categoria queda como "Proximamente" */ }
   }));
   if (!modelos[estado.categoria]) estado.categoria = null;
 }
 
+// MediaPipe necesita archivos binarios pesados (su motor .wasm y los dos
+// modelos .task). Si estan junto a la pagina se usan esos; si el sitio
+// donde esta alojada no los tiene, se bajan de sus direcciones publicas.
+const MEDIAPIPE_LOCAL = {
+  wasm: 'vendor/tasks-vision/wasm',
+  manos: 'modelos/hand_landmarker.task',
+  cuerpo: 'modelos/pose_landmarker_lite.task',
+};
+const MEDIAPIPE_PUBLICO = {
+  wasm: 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm',
+  manos: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task',
+  cuerpo: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+};
+
+// Un sitio puede responder "200" con un archivo vacio o recortado: se
+// miran los primeros bytes para saber si el binario es de verdad.
+async function empiezaCon(url, firma) {
+  try {
+    const respuesta = await fetch(url);
+    if (!respuesta.ok) return false;
+    const lector = respuesta.body.getReader();
+    const { value } = await lector.read();
+    lector.cancel();
+    return !!value && firma.every((byte, i) => value[i] === byte);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function origenDeMediaPipe() {
+  const ok = await Promise.all([
+    empiezaCon(MEDIAPIPE_LOCAL.wasm + '/vision_wasm_internal.wasm', [0x00, 0x61, 0x73, 0x6d]),
+    empiezaCon(MEDIAPIPE_LOCAL.manos, [0x50, 0x4b]),
+    empiezaCon(MEDIAPIPE_LOCAL.cuerpo, [0x50, 0x4b]),
+  ]);
+  return ok.every(Boolean) ? MEDIAPIPE_LOCAL : MEDIAPIPE_PUBLICO;
+}
+
 async function crearDetectores() {
-  const archivos = await FilesetResolver.forVisionTasks('vendor/tasks-vision/wasm');
+  const origen = await origenDeMediaPipe();
+  const archivos = await FilesetResolver.forVisionTasks(origen.wasm);
   // Primero con la placa de video, que es mas rapido; si no se puede, con el procesador.
   for (const delegate of ['GPU', 'CPU']) {
     try {
       detectorManos = await HandLandmarker.createFromOptions(archivos, {
-        baseOptions: { modelAssetPath: 'modelos/hand_landmarker.task', delegate },
+        baseOptions: { modelAssetPath: origen.manos, delegate },
         runningMode: 'VIDEO', numHands: 2,
         minHandDetectionConfidence: 0.5, minTrackingConfidence: 0.5,
       });
       detectorCuerpo = await PoseLandmarker.createFromOptions(archivos, {
-        baseOptions: { modelAssetPath: 'modelos/pose_landmarker_lite.task', delegate },
+        baseOptions: { modelAssetPath: origen.cuerpo, delegate },
         runningMode: 'VIDEO',
       });
       return;

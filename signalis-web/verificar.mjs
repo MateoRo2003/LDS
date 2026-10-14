@@ -24,12 +24,21 @@ function mayorDiferencia(a, b) {
 
 const iguales = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
+// igual que en app.js: un modelo grande viene partido en varios archivos
+function leerModelo(id) {
+  const datos = leer(`modelos/${id}.json`);
+  if (!datos.partes) return datos;
+  let texto = '';
+  for (let n = 1; n <= datos.partes; n++) texto += leer(`modelos/${id}.parte${n}.json`)[0];
+  return JSON.parse(texto);
+}
+
 const casos = leer('pruebas/casos.json');
 const modelos = {};
 let fallas = 0;
 
 for (const caso of casos) {
-  modelos[caso.categoria] ??= new Modelo(leer(`modelos/${caso.categoria}.json`));
+  modelos[caso.categoria] ??= new Modelo(leerModelo(caso.categoria));
   const modelo = modelos[caso.categoria];
   const nombre = (idx) => modelo.nombres[idx] ?? '(nada)';
   let difFeatures = 0;

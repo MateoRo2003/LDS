@@ -1,10 +1,10 @@
 """
 Genera docs/Guia SIGNALIS.docx: la guia para el equipo, con como
-instalar y usar la app, y todo el vocabulario con una
+abrir y usar la aplicación web, y todo el vocabulario con una
 imagen de referencia por seña.
 
 Las imagenes salen de los mismos videos con los que se entreno: una
-foto por letra y por numero, y tres momentos del movimiento para los
+foto por letra y por numero, y dos momentos del movimiento para los
 colores y las palabras. Volver a correrlo despues de cambiar el
 vocabulario en config.py actualiza el documento.
 
@@ -33,8 +33,8 @@ BORDO = RGBColor(0x8B, 0x2E, 0x36)
 # De que video sale la foto de cada categoria estatica, y que parte de
 # la imagen se usa (x0, x1, y0, y1 en fracciones).
 FOTOS_ESTATICAS = {
-    "abecedario": ("bhzaMJw_NbE", (0.22, 0.84, 0.0, 0.84)),
-    "numeros": ("gLSSENEOGD4", (0.16, 0.78, 0.0, 0.84)),
+    "abecedario": ("bhzaMJw_NbE", (0.16, 0.88, 0.0, 0.92)),
+    "numeros": ("gLSSENEOGD4", (0.10, 0.82, 0.0, 0.92)),
 }
 
 
@@ -56,22 +56,23 @@ def fotos_estaticas(categoria):
     for sena, (desde, hasta) in videos.VIDEOS[video_id]["senas"].items():
         cap.set(cv2.CAP_PROP_POS_MSEC, (desde + hasta) / 2 * 1000)
         _, frame = cap.read()
-        fotos.append((sena, jpeg(recortar(frame, *recorte, 520))))
+        fotos.append((sena, jpeg(recortar(frame, *recorte, 760))))
     return fotos
 
 
 def fotos_con_movimiento(categoria):
-    """-> lista de (nombre, imagen): tres momentos de un clip de LSA64, uno al lado del otro."""
+    """-> lista de (nombre, imagen): dos momentos de un clip de LSA64, uno al lado del otro."""
     fotos = []
     for carpeta in config.vocabulario(categoria):
         ruta = os.path.join(config.CARPETA_DATASET_LSA64, carpeta)
         cap = cv2.VideoCapture(os.path.join(ruta, sorted(os.listdir(ruta))[0]))
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         momentos = []
-        for fraccion in (0.3, 0.5, 0.7):
+        for fraccion in (0.35, 0.6):
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(total * fraccion))
             _, frame = cap.read()
-            momentos.append(recortar(frame, 0.24, 0.72, 0.04, 0.78, 400))
+            # recorte amplio: que entren las manos aunque esten lejos del cuerpo
+            momentos.append(recortar(frame, 0.10, 0.84, 0.0, 1.0, 720))
         fotos.append((config.palabra_es(carpeta), jpeg(np.hstack(momentos))))
     return fotos
 
@@ -124,22 +125,21 @@ def main():
 
     titulo(doc, "Qué es SIGNALIS", 1)
     doc.add_paragraph(
-        "SIGNALIS es una aplicación que mira por la cámara de la computadora y reconoce señas de la Lengua de "
+        "SIGNALIS es una aplicación web que mira por la cámara de la computadora y reconoce señas de la Lengua de "
         "Señas Argentina (LSA). Muestra en pantalla qué seña vio y con cuánta confianza, y tiene un modo "
         "práctica que dice si la seña que hiciste es la que querías hacer.")
     doc.add_paragraph(
         "Reconoce cuatro categorías: el abecedario, los números del 0 al 10, colores y palabras de uso "
         "cotidiano. Todas están en la última parte de esta guía, con una imagen de cada una.")
 
-    titulo(doc, "Instalación", 1)
+    titulo(doc, "Cómo abrirla", 1)
     pasos(doc, [
-        "Instalá Python desde python.org/downloads (versión 3.11 o más nueva). En la primera pantalla del "
-        "instalador marcá la casilla «Add python.exe to PATH».",
-        "Descomprimí el archivo SIGNALIS-estudiantes.zip en una carpeta, por ejemplo en el Escritorio.",
-        "Dentro de la carpeta SIGNALIS, hacé doble clic en instalar.bat y esperá a que termine. Tarda varios "
-        "minutos y necesita internet. Se hace una sola vez.",
-        "Para abrir la aplicación, doble clic en SIGNALIS.bat. Para cerrarla, cerrá su ventana.",
+        "Abrí signalis-lsa.vercel.app en Chrome o Edge. No hay que instalar nada.",
+        "Cuando el navegador pregunte, permití el uso de la cámara.",
+        "La primera vez tarda un poco en cargar; después abre rápido.",
     ])
+    doc.add_paragraph(
+        "El reconocimiento se hace en tu propia computadora: la imagen de la cámara no se envía a ningún lado.")
 
     titulo(doc, "Cómo se usa", 1)
     pasos(doc, [
@@ -167,11 +167,11 @@ def main():
     titulo(doc, "Vocabulario", 1)
     doc.add_paragraph(
         "Las imágenes muestran a la persona tal como la ve la cámara. En los colores y las palabras, cada "
-        "imagen tiene tres momentos del movimiento, de izquierda a derecha.")
+        "imagen tiene dos momentos del movimiento, de izquierda a derecha.")
 
     categorias = [
-        ("abecedario", "Las 27 letras. Algunas se hacen en un lugar preciso: la frente, la oreja, el mentón.", 3, 5.2),
-        ("numeros", "Del 0 al 10.", 3, 5.2),
+        ("abecedario", "Las 27 letras. Algunas se hacen en un lugar preciso: la frente, la oreja, el mentón.", 2, 8.0),
+        ("numeros", "Del 0 al 10.", 2, 8.0),
         ("colores", "Señas con movimiento.", 1, 15.5),
         ("palabras", "Señas con movimiento.", 1, 15.5),
     ]
