@@ -4,8 +4,10 @@ abrir y usar la aplicación web, y todo el vocabulario con una
 imagen de referencia por seña.
 
 Las imagenes salen de los mismos videos con los que se entreno: una
-foto por letra y por numero, y dos momentos del movimiento para los
-colores y las palabras. Volver a correrlo despues de cambiar el
+foto por letra y por numero, y el principio y el final del movimiento
+para los colores y las palabras (los dos momentos en que la mano esta
+mas distinta, asi se ve por ejemplo que en APRENDER el indice toca la
+frente). Volver a correrlo despues de cambiar el
 vocabulario en config.py actualiza el documento.
 
 Uso:
@@ -26,6 +28,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 import config
 import senas_desde_videos as videos
+from extraer_landmarks import ruta_crudo
 
 SALIDA = os.path.join(config.PROYECTO, "docs", "Guia SIGNALIS.docx")
 BORDO = RGBColor(0x8B, 0x2E, 0x36)
@@ -60,16 +63,42 @@ def fotos_estaticas(categoria):
     return fotos
 
 
+def momentos_clave(carpeta, video):
+    """
+    Los dos instantes mas distintos de la seña, en numero de frame del video.
+
+    Un momento fijo (por ejemplo, la mitad del clip) puede caer cuando la
+    mano todavia esta subiendo y no mostrar lo que distingue la seña, como
+    el indice tocando la frente en «aprender». Con los puntos de las manos
+    ya extraidos se buscan, entre los frames con alguna mano levantada, los
+    dos que mas difieren: el principio y el final del movimiento.
+    """
+    d = np.load(ruta_crudo(carpeta, video))
+    manos, presente = d["manos"], d["presente"]
+    levantada = presente & (manos[:, :, 0, 1] < 0.75)   # muñeca por encima de la cintura
+    utiles = np.flatnonzero(levantada.any(axis=1))
+    if len(utiles) < 2:
+        return None
+    postura = (manos[utiles, :, :, :2] * levantada[utiles][:, :, None, None]).reshape(len(utiles), -1)
+    distancias = np.linalg.norm(postura[:, None] - postura[None], axis=-1)
+    i, j = sorted(np.unravel_index(distancias.argmax(), distancias.shape))
+    paso = max(1, round(cv2.VideoCapture(os.path.join(config.CARPETA_DATASET_LSA64, carpeta, video))
+                        .get(cv2.CAP_PROP_FPS) / config.FPS_OBJETIVO))
+    return utiles[i] * paso, utiles[j] * paso
+
+
 def fotos_con_movimiento(categoria):
-    """-> lista de (nombre, imagen): dos momentos de un clip de LSA64, uno al lado del otro."""
+    """-> lista de (nombre, imagen): el principio y el final del movimiento, uno al lado del otro."""
     fotos = []
     for carpeta in config.vocabulario(categoria):
         ruta = os.path.join(config.CARPETA_DATASET_LSA64, carpeta)
-        cap = cv2.VideoCapture(os.path.join(ruta, sorted(os.listdir(ruta))[0]))
+        video = sorted(os.listdir(ruta))[0]
+        cap = cv2.VideoCapture(os.path.join(ruta, video))
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cuadros = momentos_clave(carpeta, video) or (int(total * 0.35), int(total * 0.6))
         momentos = []
-        for fraccion in (0.35, 0.6):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, int(total * fraccion))
+        for cuadro in cuadros:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(cuadro))
             _, frame = cap.read()
             # recorte amplio: que entren las manos aunque esten lejos del cuerpo
             momentos.append(recortar(frame, 0.10, 0.84, 0.0, 1.0, 720))
@@ -167,7 +196,7 @@ def main():
     titulo(doc, "Vocabulario", 1)
     doc.add_paragraph(
         "Las imágenes muestran a la persona tal como la ve la cámara. En los colores y las palabras, cada "
-        "imagen tiene dos momentos del movimiento, de izquierda a derecha.")
+        "imagen muestra el principio y el final del movimiento, de izquierda a derecha.")
 
     categorias = [
         ("abecedario", "Las 27 letras. Algunas se hacen en un lugar preciso: la frente, la oreja, el mentón.", 2, 8.0),
