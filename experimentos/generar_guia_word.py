@@ -40,6 +40,14 @@ FOTOS_ESTATICAS = {
     "numeros": ("gLSSENEOGD4", (0.10, 0.82, 0.0, 0.92)),
 }
 
+# Señas en las que la busqueda automatica de momentos no muestra lo que
+# importa: momentos elegidos mirando el video, en fraccion del clip. En
+# «aceptar» el final es el puño apoyado sobre la palma, a la altura de la
+# cintura, donde la busqueda considera que la mano ya bajo.
+MOMENTOS_A_MANO = {
+    "050-accept": (0.33, 0.85),
+}
+
 
 def jpeg(imagen):
     return io.BytesIO(cv2.imencode(".jpg", imagen, [cv2.IMWRITE_JPEG_QUALITY, 85])[1].tobytes())
@@ -95,7 +103,10 @@ def fotos_con_movimiento(categoria):
         video = sorted(os.listdir(ruta))[0]
         cap = cv2.VideoCapture(os.path.join(ruta, video))
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        cuadros = momentos_clave(carpeta, video) or (int(total * 0.35), int(total * 0.6))
+        if carpeta in MOMENTOS_A_MANO:
+            cuadros = [int(total * f) for f in MOMENTOS_A_MANO[carpeta]]
+        else:
+            cuadros = momentos_clave(carpeta, video) or (int(total * 0.35), int(total * 0.6))
         momentos = []
         for cuadro in cuadros:
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(cuadro))

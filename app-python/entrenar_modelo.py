@@ -42,11 +42,24 @@ M = config.FEATURES_POR_MANO
 FORMA = slice(0, M - 3)
 POS = slice(M - 3, M - 1)
 
+# Señas de dos manos en las que una queda quieta y en LSA64 MediaPipe no
+# la detecta nunca (en «aceptar», la palma hacia arriba con el guante
+# verde: 0 de 50 clips). Sin ella el modelo aprende la seña con una sola
+# mano y no reconoce a quien la hace bien. A cada clip se le suma una
+# copia con esa mano agregada: su forma sale de una grabacion propia
+# (datos/propio/palma_arriba.npy) y se ubica respecto de donde termina
+# la otra mano, en anchos de hombros.
+MANO_AGREGADA = {
+    "050-accept": {"forma": os.path.join(config.PROYECTO, "datos", "propio", "palma_arriba.npy"),
+                   "desde_el_final": (0.35, 0.08)},
+}
+
 
 def cargar_clips(categoria):
     """-> lista de (features (T, F), indice de clase, persona)."""
     vocab = config.vocabulario(categoria)
     clips, faltan, sin_cuerpo = [], 0, 0
+    rng = np.random.default_rng(2)
     for carpeta, nombre in clips_de_categoria(categoria):
         ruta = ruta_crudo(carpeta, nombre)
         if not os.path.exists(ruta):
@@ -59,12 +72,35 @@ def cargar_clips(categoria):
             continue
         clase = vocab.index(carpeta) if carpeta in vocab else len(vocab)
         clips.append((feats, clase, partes_de_nombre(nombre)[0]))
+        if carpeta in MANO_AGREGADA:
+            clips.append((con_mano_agregada(feats, MANO_AGREGADA[carpeta], rng), clase, partes_de_nombre(nombre)[0]))
     if faltan:
         raise SystemExit(f"Faltan {faltan} clips sin extraer — corré primero: "
                          f"python extraer_landmarks.py --categoria {categoria}")
     if sin_cuerpo:
         print(f"[AVISO] {sin_cuerpo} clips descartados: no se detecto el cuerpo en ningun frame")
     return clips
+
+
+def con_mano_agregada(feats, agregada, rng):
+    """
+    Copia del clip con la mano quieta que faltaba: va en el lugar libre de
+    cada frame, mientras dura la seña, y a veces falta (en vivo, cuando la
+    otra mano la tapa, MediaPipe la pierde).
+    """
+    s = feats.reshape(len(feats), 2, M).copy()
+    activa = s[:, :, -1] > 0
+    con_mano = np.flatnonzero(activa.any(axis=1))
+    if len(con_mano) == 0:
+        return feats
+    ultimos = con_mano[-max(1, len(con_mano) // 4):]
+    final = np.array([s[i, activa[i].argmax(), POS] for i in ultimos]).mean(axis=0)
+    mano = np.concatenate([np.load(agregada["forma"]), final + agregada["desde_el_final"], [1.0]])
+    for i in range(con_mano[0], con_mano[-1] + 1):
+        libres = np.flatnonzero(~activa[i])
+        if len(libres) and rng.random() > 0.25:
+            s[i, libres[0]] = mano
+    return s.reshape(len(feats), -1)
 
 
 def espejar(sec):
