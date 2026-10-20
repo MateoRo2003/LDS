@@ -199,9 +199,9 @@ def mano_quieta(feats, rng):
 
 
 def armar_conjunto(clips, clase_nada, rng, copias):
-    # Las señas que salen de un solo video tienen 1 o 2 clips contra los
-    # ~40 de LSA64: se repiten mas (siempre con variantes al azar) para
-    # que pesen lo mismo en el entrenamiento.
+    # Una seña con menos clips que las demas (por ejemplo, una que sale de
+    # un solo video, con 1 o 2 clips contra los ~40 de LSA64) se repite mas
+    # (siempre con variantes al azar) para que pese lo mismo al entrenar.
     por_clase = np.bincount([c for _, c, _ in clips])
     referencia = max(n for c, n in enumerate(por_clase) if c != clase_nada)
     X, y = [], []

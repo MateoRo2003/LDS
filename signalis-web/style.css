@@ -438,38 +438,6 @@ button {
   margin-top: 18px;
 }
 
-/* Grupos dentro de una categoria (Palabras: básicas, saludos, preguntas) */
-.grupos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 14px;
-  padding: 4px;
-  background: var(--suave);
-  border-radius: 12px;
-  width: fit-content;
-  max-width: 100%;
-}
-
-.grupo {
-  border: none;
-  background: transparent;
-  border-radius: 9px;
-  padding: 7px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--marca-oscura);
-}
-
-.grupo:hover {
-  background: var(--tarjeta);
-}
-
-.grupo.active {
-  background: var(--marca);
-  color: #fff;
-}
-
 .senas h3 {
   font-weight: 500;
   font-size: 13px;
@@ -491,11 +459,7 @@ button {
   font-size: 13px;
   font-weight: 500;
   color: var(--marca-oscura);
-}
-
-/* «Cuál de los dos», no «Cuál De Los Dos» */
-.sena::first-letter {
-  text-transform: uppercase;
+  text-transform: capitalize;
 }
 
 .sena:hover {

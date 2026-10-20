@@ -246,7 +246,6 @@ export class Modelo {
     this.titulo = datos.titulo;
     this.tipoSena = datos.tipo_sena;
     this.estatica = datos.estatica;
-    this.dentroDe = datos.dentro_de || null;   // categoria de la que es un grupo (saludos -> palabras)
     this.clases = datos.clases;
     this.nombres = datos.nombres;
     this.nada = datos.clases.indexOf(NADA);

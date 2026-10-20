@@ -261,12 +261,10 @@ def descripcion(doc):
            "LSA y muestra en pantalla qué seña detectó y con cuánta confianza. Además, ofrece un modo práctica: la "
            "persona elige una seña de la lista, la realiza frente a la cámara y la aplicación le indica si lo que "
            "hizo corresponde a esa seña o no.")
-    cuerpo(doc, "El sistema reconoce 88 señas organizadas en cuatro categorías: el abecedario (27 letras), los "
+    cuerpo(doc, "El sistema reconoce 68 señas organizadas en cuatro categorías: el abecedario (27 letras), los "
            "números del 0 al 10, ocho señas de colores (opaco, rojo, verde, amarillo, claro, celeste, colores y "
-           "rosa) y palabras. Las palabras se ordenan en tres grupos: 22 palabras básicas de uso cotidiano, como "
-           "gracias, ayuda, agua o comida; 13 saludos y fórmulas de cortesía, como hola, chau, buen día o por "
-           "favor; y 9 palabras para hacer preguntas, como cuándo, cómo, quién o por qué. Gracias y dónde "
-           "aparecen en dos grupos. Las letras y los números son posturas, que se reconocen cuando la mano "
+           "rosa) y 22 palabras de uso cotidiano, como gracias, ayuda, agua o comida. Las letras y los números "
+           "son posturas, que se reconocen cuando la mano "
            "permanece quieta alrededor de medio segundo; los colores y las palabras son señas con movimiento, que "
            "se reconocen a partir de la seña completa.")
     cuerpo(doc, "La aplicación funciona desde el navegador (Chrome o Edge), sin instalar nada, y el reconocimiento "
@@ -300,8 +298,8 @@ def objetivos(doc):
     doc.add_heading("Objetivos específicos", 2)
     vinetas(doc, [
         "Investigar la problemática del aprendizaje de la LSA y los antecedentes de herramientas similares.",
-        "Definir un vocabulario inicial organizado en cuatro categorías (abecedario, números, colores y "
-        "palabras) y ordenar las palabras en tres grupos: básicas, saludos y preguntas.",
+        "Definir un vocabulario inicial organizado en cuatro categorías: abecedario, números, colores y "
+        "palabras.",
         "Reunir y organizar datos públicos de LSA y entrenar con ellos los modelos que reconocen las señas.",
         "Implementar la detección de las manos en el navegador y un motor de reconocimiento, basado en redes "
         "neuronales, que distinga posturas y movimientos.",
@@ -376,7 +374,7 @@ def tecnologias(doc):
            "se procese en la computadora de la persona; que sea de bajo costo, para lo cual se priorizaron "
            "herramientas libres o gratuitas; que sea simple de mantener, con pocos archivos y sin pasos de "
            "compilación; y que existan datos públicos de LSA con los que el sistema pueda aprender. El proyecto "
-           "completo consta de 27 archivos y ocupa alrededor de 3,6 MB.")
+           "completo consta de 17 archivos y ocupa alrededor de 2 MB.")
 
     doc.add_heading("Lenguajes de la aplicación: HTML5, CSS3 y JavaScript", 2)
     cuerpo(doc, "La pantalla de SIGNALIS está escrita en HTML5 (index.html) y se presenta con CSS3 (style.css). Se "
@@ -398,7 +396,7 @@ def tecnologias(doc):
            "el dibujo de los puntos de la mano sobre la imagen, la descarga de los modelos y el almacenamiento "
            "local, donde se recuerdan la cámara elegida y el tema claro u oscuro, sin guardar ningún dato "
            "personal. Se trabajó sin frameworks, en lo que el entorno del campus clasifica como «HTML5 · Vanilla "
-           "Web». Como se trata de una sola pantalla, el código propio ocupa cuatro archivos (unas 2.000 líneas) "
+           "Web». Como se trata de una sola pantalla, el código propio ocupa cuatro archivos (unas 1.950 líneas) "
            "y no hay pasos de compilación que puedan fallar. La contrapartida es que ciertas tareas, como "
            "actualizar la pantalla, se programan a mano, pero para una aplicación de estas dimensiones esa "
            "complejidad es manejable.")
@@ -426,7 +424,7 @@ def tecnologias(doc):
            "archivos hacia la computadora de la persona: la imagen de la cámara nunca sale de ella.")
 
     doc.add_heading("Reconocimiento de señas: redes neuronales en JavaScript", 2)
-    cuerpo(doc, "El reconocimiento propiamente dicho lo realizan redes neuronales, una por categoría o grupo, que "
+    cuerpo(doc, "El reconocimiento propiamente dicho lo realizan redes neuronales, una por categoría, que "
            "reciben los puntos de las manos y devuelven la probabilidad de cada seña. Antes de entrar a la red, "
            "los puntos se transforman: cada punto de la mano se mide desde la muñeca y se divide por el tamaño de "
            "la mano, y su ubicación se expresa respecto de la cara. Así, la forma de la mano no depende de la "
@@ -443,36 +441,32 @@ def tecnologias(doc):
            "redes recurrentes de tipo LSTM (Hochreiter y Schmidhuber, 1997), capaces de recordar lo ocurrido en "
            "los instantes anteriores. Se usaron dos capas bidireccionales de 64 y 32 unidades (Schuster y "
            "Paliwal, 1997), que leen la secuencia hacia adelante y hacia atrás, seguidas de una capa densa de 64 "
-           "neuronas y de la salida de clasificación, con unos 147.000 parámetros por modelo. Las palabras usan "
-           "tres modelos, uno por grupo (básicas, saludos y preguntas), de modo que cada uno distingue entre "
-           "pocas señas. Estos modelos incluyen una clase «nada» para los momentos en que la persona no hace "
-           "ninguna seña. Como nadie hace una seña siempre a la misma velocidad, el sistema prueba con tres "
+           "neuronas y de la salida de clasificación, con unos 147.000 parámetros por modelo. Estos modelos "
+           "incluyen una clase «nada» para los momentos en que la persona no hace ninguna seña. Como nadie hace una seña siempre a la misma velocidad, el sistema prueba con tres "
            "ventanas de tiempo (1; 1,5 y 2,2 segundos), se queda con la que el modelo ve más clara, promedia tres "
            "predicciones y exige que una seña nueva se sostenga durante dos predicciones seguidas.")
     cuerpo(doc, "Los modelos se entrenan en Python y sus pesos se exportan a archivos JSON, con el orden de capas y "
            "compuertas de Keras (Chollet, 2015). En el navegador, motor.js repite las cuentas de cada capa (capas "
            "densas, LSTM y salida de probabilidades) sin utilizar ninguna librería de aprendizaje automático. Se "
-           "eligió esta alternativa porque las redes son pequeñas (los seis modelos juntos pesan alrededor de "
-           "3,4 MB), porque evita sumar una dependencia pesada y porque permite comprobar que el motor da los "
+           "eligió esta alternativa porque las redes son pequeñas (los cuatro modelos juntos pesan alrededor de "
+           "1,8 MB), porque evita sumar una dependencia pesada y porque permite comprobar que el motor da los "
            "mismos resultados que la versión de escritorio en Python con la que se entrenó el sistema. Se eligió "
            "JSON porque es un formato de texto que JavaScript lee de forma nativa y que se entrega como cualquier "
            "otro archivo de un sitio estático; su costo es que ocupa más espacio que un formato binario, algo "
            "aceptable para modelos tan pequeños.")
-    cuerpo(doc, "Los modelos de colores, palabras, saludos y preguntas, por su tamaño, se dividen en cuatro partes "
-           "de aproximadamente 250 KB cada una, porque hay sitios que no aceptan archivos grandes. El archivo "
+    cuerpo(doc, "Los modelos de colores y de palabras, por su tamaño, se dividen en cuatro partes de "
+           "aproximadamente 250 KB cada una, porque hay sitios que no aceptan archivos grandes. El archivo "
            "principal de cada modelo indica en cuántas partes está dividido, y la aplicación las descarga y las "
-           "une. Si falta algún modelo, la categoría o el grupo correspondiente queda fuera de servicio y el "
+           "une. Si falta algún modelo, la categoría correspondiente queda marcada como «Próximamente» y el "
            "resto de la aplicación sigue funcionando.")
 
     doc.add_heading("Datos y entrenamiento", 2)
-    cuerpo(doc, "Las señas de colores y las palabras básicas se aprendieron del conjunto de datos LSA64, de la "
+    cuerpo(doc, "Las señas de colores y palabras se aprendieron del conjunto de datos LSA64, de la "
            "Universidad Nacional de La Plata, que contiene 3.200 videos de 64 señas de la LSA realizadas por 10 "
            "personas, con cinco repeticiones cada una (Ronchetti et al., 2016). El abecedario se aprendió de tres "
            "videos educativos y los números de dos, entre ellos «Alfabeto dactilológico LSA» y «Números en LSA», "
            "de la Dirección de Documentación (Dirección de Documentación, s.f.-a, s.f.-b; Universidad Popular, "
-           "s.f.; chany3h, s.f.; Sarria, s.f.). Los saludos y las preguntas se aprendieron de otros dos videos de "
-           "la misma serie: «Saludos y fórmulas de cortesía en LSA» y «Organizadores de preguntas en LSA» "
-           "(Dirección de Documentación, s.f.-c, s.f.-d). Se eligieron datos públicos y específicos de la LSA "
+           "s.f.; chany3h, s.f.; Sarria, s.f.). Se eligieron datos públicos y específicos de la LSA "
            "porque evitan tener que grabar un corpus propio completo y porque LSA64 fue creado para el "
            "reconocimiento automático de señas.")
     cuerpo(doc, "Estos datos tienen condiciones que el proyecto debió tener en cuenta. LSA64 se distribuye con "
@@ -503,7 +497,7 @@ def tecnologias(doc):
            "sitio estático en un entorno «HTML5 · Vanilla Web» del campus del instituto. Como el reconocimiento "
            "ocurre en el navegador, no hace falta un servidor propio: alcanza con entregar los archivos del "
            "proyecto. Los navegadores solo permiten el acceso a la cámara en sitios con conexión segura (Mozilla, "
-           "s.f.), y el campus la provee. La rama principal del repositorio contiene exactamente los 27 archivos "
+           "s.f.), y el campus la provee. La rama principal del repositorio contiene exactamente los 17 archivos "
            "que se suben al campus, junto con un archivo README.md que explica los pasos para subirlos; el código "
            "de entrenamiento, en Python, se guarda en otra rama del mismo repositorio. Como el campus conserva "
            "una copia de los archivos durante algunas horas, después de subir una versión nueva conviene "
@@ -513,13 +507,11 @@ def tecnologias(doc):
     cuerpo(doc, "Frente a otras opciones posibles, como una aplicación de escritorio o un servidor que reciba el "
            "video y devuelva el resultado, la solución elegida tiene tres ventajas: no exige instalar programas, "
            "no envía imágenes de las personas por internet y no requiere mantener un servidor. Sus limitaciones "
-           "son cuatro. La primera es que el rendimiento depende de la computadora y del navegador de quien la "
+           "son tres. La primera es que el rendimiento depende de la computadora y del navegador de quien la "
            "usa, por lo que la guía recomienda Chrome o Edge, buena iluminación y mostrar la cara, los hombros y "
            "las manos. La segunda es que los modelos aprendieron de pocas personas y de videos con condiciones "
-           "propias, por lo que pueden fallar con manos, ropa o iluminación muy distintas. La tercera es que los "
-           "saludos y las preguntas se aprendieron de una sola persona cada grupo, por lo que su reconocimiento "
-           "con otras personas todavía debe medirse. La cuarta es que el vocabulario se limita a 88 señas "
-           "aisladas: la aplicación no interpreta frases.")
+           "propias, por lo que pueden fallar con manos, ropa o iluminación muy distintas. La tercera es que el "
+           "vocabulario se limita a 68 señas aisladas: la aplicación no interpreta frases.")
 
 
 REQ_FUNCIONALES = [
@@ -537,21 +529,21 @@ REQ_FUNCIONALES = [
     ("Reconocimiento de señas", [
         ("RF6", "Seleccionar una categoría",
          "Permite elegir abecedario, números, colores o palabras desde la barra lateral o desde «Explorar "
-         "categorías»; en palabras, además, el grupo: básicas, saludos o preguntas."),
+         "categorías»."),
         ("RF7", "Reconocer posturas",
          "Identifica las letras y los números cuando la mano permanece quieta alrededor de medio segundo."),
         ("RF8", "Reconocer señas con movimiento",
-         "Identifica los colores y las palabras de los tres grupos a partir de la seña completa, analizada como "
-         "una secuencia de imágenes."),
+         "Identifica los colores y las palabras a partir de la seña completa, analizada como una secuencia de "
+         "imágenes."),
         ("RF9", "Mostrar la seña detectada",
-         "Muestra el nombre de la seña y su tipo (letra, número, color, palabra, saludo o pregunta)."),
+         "Muestra el nombre de la seña y su tipo (letra, número, color o palabra)."),
         ("RF10", "Mostrar el nivel de confianza", "Indica con un porcentaje y con una barra qué tan segura está la detección."),
         ("RF11", "Descartar detecciones dudosas",
          "No acepta una seña si su confianza es menor al mínimo configurado o si no se sostiene en el tiempo."),
     ]),
     ("Práctica e historial", [
         ("RF12", "Seleccionar una seña para practicar",
-         "Permite tocar una seña de la lista de la categoría o del grupo y activa el modo práctica."),
+         "Permite tocar una seña de la lista de la categoría y activa el modo práctica."),
         ("RF13", "Indicar si la seña coincide",
          "Informa si lo realizado corresponde a la seña elegida o con cuál otra se la confundió."),
         ("RF14", "Registrar el historial de la sesión",
@@ -569,8 +561,7 @@ REQ_FUNCIONALES = [
          "Explica cuándo falta el permiso, no hay cámara, la cámara está ocupada o no se pudo cargar el "
          "reconocimiento."),
         ("RF20", "Cargar los modelos por categoría",
-         "Descarga el modelo de cada categoría y de cada grupo de palabras; los que no estén disponibles quedan "
-         "fuera de servicio."),
+         "Descarga el modelo de cada categoría; las que no estén disponibles figuran como «Próximamente»."),
     ]),
 ]
 
@@ -588,16 +579,16 @@ REQ_NO_FUNCIONALES = [
     ("RNF7", "Usabilidad", "La interfaz debe ser clara y estar en español, con acceso directo a las categorías, a la "
      "seña detectada y al estado del sistema, y con modos claro y oscuro."),
     ("RNF8", "Robustez", "Los errores de cámara o de carga deben informarse en pantalla sin cerrar la aplicación; si "
-     "falta un modelo, solo esa categoría o ese grupo queda fuera de servicio."),
+     "falta un modelo, solo esa categoría queda fuera de servicio."),
     ("RNF9", "Fiabilidad", "El reconocimiento debe ser independiente de la distancia y la posición de la persona "
      "frente a la cámara, valer con cualquiera de las dos manos y no verse afectado si la mano que no participa "
      "de la seña queda quieta a la vista."),
     ("RNF10", "Mantenibilidad", "La estructura debe ser modular, con la pantalla, el control de la cámara, el "
-     "reconocimiento y los modelos separados; una categoría o un grupo nuevo se agrega sumando un modelo."),
-    ("RNF11", "Portabilidad", "Debe poder publicarse como sitio web estático, sin servidor propio: 27 archivos que "
-     "ocupan alrededor de 3,6 MB."),
-    ("RNF12", "Almacenamiento", "Los modelos deben estar separados por categoría y por grupo, y los de mayor tamaño "
-     "divididos en partes de unos 250 KB."),
+     "reconocimiento y los modelos separados; una categoría nueva se agrega sumando un modelo y su botón."),
+    ("RNF11", "Portabilidad", "Debe poder publicarse como sitio web estático, sin servidor propio: 17 archivos que "
+     "ocupan alrededor de 2 MB."),
+    ("RNF12", "Almacenamiento", "Los modelos deben estar separados por categoría, y los de mayor tamaño divididos "
+     "en partes de unos 250 KB."),
     ("RNF13", "Legalidad", "El uso de datos públicos debe respetar sus licencias (CC BY-NC-SA en el caso de LSA64) y "
      "citar sus fuentes, por lo que el proyecto es educativo y no comercial."),
 ]
@@ -664,18 +655,17 @@ def diseno(doc):
            "identifica la seña con ayuda de los modelos de cada categoría y la interfaz muestra el resultado. El "
            "sitio alojado en el entorno del campus solo entrega los archivos del proyecto.")
     figura(doc, "arquitectura.png", 15.5)
-    cuerpo(doc, "El sitio consta de 27 archivos. En la raíz están index.html y style.css, que forman la pantalla; "
+    cuerpo(doc, "El sitio consta de 17 archivos. En la raíz están index.html y style.css, que forman la pantalla; "
            "app.js, que maneja la cámara y los botones; y motor.js, que reconoce las señas. La carpeta modelos "
-           "contiene 22 archivos JSON: un modelo por categoría y por grupo de palabras (abecedario, números, "
-           "colores, palabras básicas, saludos y preguntas), más las cuatro partes en que se dividen los de "
-           "colores, palabras, saludos y preguntas. La carpeta vendor/tasks-vision contiene vision_bundle.js, la "
+           "contiene doce archivos JSON: un modelo por categoría (abecedario, números, colores y palabras), más "
+           "las cuatro partes en que se dividen los de colores y palabras. La carpeta vendor/tasks-vision contiene vision_bundle.js, la "
            "librería MediaPipe Tasks Vision. A estos se suma el archivo README.md, con las instrucciones para "
            "subir y usar el proyecto, que no se sube al entorno del campus. Los nombres de archivos y carpetas "
            "deben respetarse tal como figuran, en minúsculas, porque la aplicación los busca por esa ruta.")
     doc.add_heading("Flujo de uso", 2)
     cuerpo(doc, "Resumen de cómo se usa la aplicación. Al abrirla, carga los modelos y los detectores de MediaPipe "
-           "y pide permiso para usar la cámara. La persona elige una categoría (en palabras, también el grupo) y, "
-           "si quiere practicar, una seña de la lista; se ubica de frente a la cámara y hace la seña. Por cada "
+           "y pide permiso para usar la cámara. La persona elige una categoría y, si quiere "
+           "practicar, una seña de la lista; se ubica de frente a la cámara y hace la seña. Por cada "
            "imagen nueva, el sistema ubica las manos y el cuerpo y el motor calcula qué seña es la más probable. "
            "Si la confianza supera el mínimo configurado (60 % por defecto), la aplicación muestra la seña con su "
            "nivel de confianza y la agrega al historial; en el modo práctica, además, indica si coincide con la "
@@ -697,10 +687,6 @@ REFERENCIAS = [
     "https://www.youtube.com/watch?v=bhzaMJw_NbE",
     "Dirección de Documentación. (s.f.-b). *Números en LSA* [Video]. YouTube. "
     "https://www.youtube.com/watch?v=gLSSENEOGD4",
-    "Dirección de Documentación. (s.f.-c). *Organizadores de preguntas en LSA* [Video]. YouTube. "
-    "https://www.youtube.com/watch?v=x57rpA804yA",
-    "Dirección de Documentación. (s.f.-d). *Saludos y fórmulas de cortesía en LSA* [Video]. YouTube. "
-    "https://www.youtube.com/watch?v=g18JlOMg5Lk",
     "Google. (s.f.). *MediaPipe: On-device machine learning for everyone*. GitHub. "
     "https://github.com/google-ai-edge/mediapipe",
     "Hochreiter, S. y Schmidhuber, J. (1997). Long short-term memory. *Neural Computation, 9*(8), 1735-1780. "

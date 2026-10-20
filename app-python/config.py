@@ -70,39 +70,7 @@ CATEGORIAS = {
         "063-give",
         "024-argentina",
     ],
-    # Saludos y preguntas no estan en LSA64 (salvo gracias y donde): salen
-    # de videos, con experimentos/palabras_desde_videos.py. En la
-    # interfaz son grupos dentro de "palabras" (ver DENTRO_DE).
-    "saludos": [
-        "101-hola",
-        "102-chau",
-        "103-buen-dia",
-        "104-buenas-tardes",
-        "105-buenas-noches",
-        "106-hasta-manana",
-        "051-thanks",
-        "107-muchas-gracias",
-        "108-por-favor",
-        "109-lo-siento",
-        "110-felicitaciones",
-        "111-perdon",
-        "112-bienvenidos",
-    ],
-    "preguntas": [
-        "121-cuando",
-        "122-como",
-        "123-cuantos",
-        "124-cual",
-        "125-cual-de-los-dos",
-        "126-quien",
-        "127-que",
-        "128-por-que",
-        "028-where",
-    ],
 }
-
-# Categorias que en la interfaz aparecen como un grupo dentro de otra.
-DENTRO_DE = {"saludos": "palabras", "preguntas": "palabras"}
 
 # Categorias de señas ESTATICAS: se reconocen por la postura en un
 # instante, sin movimiento. No salen de LSA64: sus muestras se sacan de
@@ -119,8 +87,6 @@ INFO_CATEGORIAS = {
     "numeros": ("Números", "Número"),
     "colores": ("Colores", "Color"),
     "palabras": ("Palabras", "Palabra"),
-    "saludos": ("Saludos", "Saludo"),
-    "preguntas": ("Preguntas", "Pregunta"),
 }
 
 # Clase extra que aprende cada modelo: "esto no es ninguna seña de la
@@ -209,24 +175,6 @@ TRADUCCION_ES = {
     "light-blue": "celeste",
     "colors": "colores",
     "pink": "rosa",
-    # las señas que salen de videos ya tienen nombre en español: aca solo
-    # van las que llevan tilde o espacios
-    "buen-dia": "buen día",
-    "buenas-tardes": "buenas tardes",
-    "buenas-noches": "buenas noches",
-    "hasta-manana": "hasta mañana",
-    "muchas-gracias": "muchas gracias",
-    "por-favor": "por favor",
-    "lo-siento": "lo siento",
-    "perdon": "perdón",
-    "cuando": "cuándo",
-    "como": "cómo",
-    "cuantos": "cuántos",
-    "cual": "cuál",
-    "cual-de-los-dos": "cuál de los dos",
-    "quien": "quién",
-    "que": "qué",
-    "por-que": "por qué",
 }
 
 

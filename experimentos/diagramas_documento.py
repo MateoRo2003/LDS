@@ -58,8 +58,8 @@ def arquitectura():
     caja(ax, 2.15, 0.3, 4.7, 5.85, "", "#fafafa", AZUL, estilo="--", redondeo=0.1)
     ax.text(4.5, 5.85, "Navegador (Chrome o Edge)", ha="center", va="center", fontsize=12.5,
             color=AZUL, fontweight="bold")
-    caja(ax, 2.4, 4.6, 4.2, 0.95, "Interfaz\nindex.html + style.css\nCategorías, grupos de palabras, lista de\n"
-         "señas, seña detectada y confianza", ROSA, BORDO, tam=9)
+    caja(ax, 2.4, 4.6, 4.2, 0.95, "Interfaz\nindex.html + style.css\nCategorías, lista de señas, seña detectada\n"
+         "y confianza", ROSA, BORDO, tam=9)
     caja(ax, 2.4, 3.55, 4.2, 0.72, "Control\napp.js\nManejo de la cámara y de los botones", ROSA, BORDO, tam=9)
     flecha(ax, 4.5, 4.27, 4.5, 4.6, doble=True)
     # reconocimiento
@@ -69,8 +69,8 @@ def arquitectura():
     caja(ax, 4.65, 1.9, 1.8, 1.0, "motor.js\nIdentifica la seña", ROSA, BORDO, tam=9)
     flecha(ax, 4.45, 2.4, 4.65, 2.4)
     flecha(ax, 4.5, 3.25, 4.5, 3.55, doble=True)
-    caja(ax, 2.4, 0.5, 4.2, 0.95, "Modelos (modelos/*.json)\nabecedario · números · colores · palabras\n"
-         "(básicas · saludos · preguntas)", GRIS, GRIS_BORDE, tam=9)
+    caja(ax, 2.4, 0.5, 4.2, 0.95, "Modelos (modelos/*.json)\nabecedario · números · colores · palabras",
+         GRIS, GRIS_BORDE, tam=9)
     flecha(ax, 5.55, 1.45, 5.55, 1.9, doble=True)
     # afuera del navegador
     caja(ax, 0.15, 4.75, 1.65, 0.8, "Persona usuaria\nhace la seña", GRIS, GRIS_BORDE, tam=9)
@@ -79,7 +79,7 @@ def arquitectura():
     flecha(ax, 1.8, 3.65, 2.4, 3.91)
     ax.text(0.975, 2.5, "La imagen de la cámara\nno sale de la\ncomputadora", ha="center", va="center",
             fontsize=8.5, style="italic", color=BORDO)
-    caja(ax, 7.2, 2.6, 1.65, 1.5, "Hosting estático\nentorno del\ncampus\n(27 archivos)", GRIS, GRIS_BORDE, tam=9)
+    caja(ax, 7.2, 2.6, 1.65, 1.5, "Hosting estático\nentorno del\ncampus\n(17 archivos)", GRIS, GRIS_BORDE, tam=9)
     flecha(ax, 7.2, 3.35, 6.85, 3.35)
     return fig
 
@@ -95,8 +95,7 @@ def flujo():
     pasos = ["Abrir SIGNALIS en el campus, con\nChrome o Edge",
              "Permitir el uso de la cámara cuando el\nnavegador lo pregunte",
              "Se cargan el reconocimiento y los modelos\n(la primera vez tarda más)",
-             "Elegir una categoría en la barra izquierda\no en «Explorar categorías»",
-             "En Palabras, elegir el grupo:\nBásicas, Saludos o Preguntas"]
+             "Elegir una categoría en la barra izquierda\no en «Explorar categorías»"]
     y = 6.85
     flecha(ax, cx, 7.65, cx, y + 0.6)
     for i, texto in enumerate(pasos):
@@ -130,8 +129,8 @@ def flujo():
     caja(ax, 5.95, 4.55, 2.5, 2.05, "Tipos de seña\nLetras y números: son\nposturas; mantener la\nmano quieta medio "
          "segundo.\nColores y palabras: son\nmovimientos; hacer la\nseña completa una vez\ny bajar la mano.",
          GRIS, GRIS_BORDE, tam=8.3)
-    caja(ax, 5.95, y1 - 0.9, 2.5, 1.25, "Para repetir\nSe puede cambiar de\ncategoría, de grupo o de\n"
-         "seña en cualquier momento.", GRIS, GRIS_BORDE, tam=8.3)
+    caja(ax, 5.95, y1 - 0.9, 2.5, 1.25, "Para repetir\nSe puede cambiar de\ncategoría o de seña en\n"
+         "cualquier momento.", GRIS, GRIS_BORDE, tam=8.3)
     ax.set_ylim(y1 - 1.85, 8.25)
     return fig
 

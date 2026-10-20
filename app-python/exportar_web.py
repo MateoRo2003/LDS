@@ -146,7 +146,6 @@ def main():
         titulo, tipo_sena = config.INFO_CATEGORIAS[categoria]
         partes = guardar_modelo(categoria, {
             "id": categoria, "titulo": titulo, "tipo_sena": tipo_sena, "estatica": estatica,
-            "dentro_de": config.DENTRO_DE.get(categoria),
             "clases": clases,
             "nombres": [None if c == config.CLASE_NADA else config.palabra_es(c) for c in clases],
             "capas": capas_de(modelo),
