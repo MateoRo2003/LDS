@@ -59,6 +59,8 @@ Qué es cada cosa:
 3. Ponete de frente, con la cara, los hombros y las manos a la vista.
 4. Elegí una categoría y hacé la seña.
 
+La mano que no usás puede quedar quieta a la vista.
+
 La primera vez tarda un poco en cargar. La imagen de la cámara no sale de tu computadora.
 
 ## Si algo no anda
