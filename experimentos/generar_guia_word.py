@@ -27,8 +27,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm, Pt, RGBColor
 
 import config
+import palabras_desde_videos as de_videos
 import senas_desde_videos as videos
 from extraer_landmarks import ruta_crudo
+from landmarks import features_de_secuencia
 
 SALIDA = os.path.join(config.PROYECTO, "docs", "Guia SIGNALIS.docx")
 BORDO = RGBColor(0x8B, 0x2E, 0x36)
@@ -95,8 +97,45 @@ def momentos_clave(carpeta, video):
     return utiles[i] * paso, utiles[j] * paso
 
 
+def momentos_en_video(video_id, desde, hasta):
+    """Como momentos_clave, para una seña cortada de un video largo -> dos tiempos en segundos."""
+    d = np.load(os.path.join(videos.CARPETA_CACHE, video_id + ".npz"))
+    tramo = (d["tiempos"] >= desde) & (d["tiempos"] < hasta)
+    feats = features_de_secuencia(d["manos"][tramo], d["presente"][tramo], d["cuerpo"][tramo],
+                                  d["cuerpo_ok"][tramo], float(d["aspecto"]))
+    s = feats.reshape(len(feats), 2, config.FEATURES_POR_MANO)
+    # mas exigente que MANO_EN_REPOSO: en estos videos las manos descansan juntas, algo mas arriba
+    levantada = (s[:, :, -1] > 0) & (s[:, :, -2] < 0.95)
+    utiles = np.flatnonzero(levantada.any(axis=1))
+    tiempos = d["tiempos"][tramo]
+    if len(utiles) < 2:
+        return desde + 0.35 * (hasta - desde), desde + 0.65 * (hasta - desde)
+    postura = (d["manos"][tramo][utiles, :, :, :2] * levantada[utiles][:, :, None, None]).reshape(len(utiles), -1)
+    distancias = np.linalg.norm(postura[:, None] - postura[None], axis=-1)
+    i, j = sorted(np.unravel_index(distancias.argmax(), distancias.shape))
+    return tiempos[utiles[i]], tiempos[utiles[j]]
+
+
+def fotos_de_videos(categoria):
+    """-> lista de (nombre, imagen) para los grupos que salen de un video (saludos, preguntas)."""
+    fotos = []
+    for carpeta in config.vocabulario(categoria):
+        video_id = next(v for v, info in de_videos.VIDEOS.items() if carpeta in info["senas"])
+        desde, hasta = de_videos.VIDEOS[video_id]["senas"][carpeta][0]
+        cap = cv2.VideoCapture(os.path.join(videos.CARPETA_VIDEOS, video_id + ".mp4"))
+        momentos = []
+        for t in momentos_en_video(video_id, desde, hasta):
+            cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+            _, frame = cap.read()
+            momentos.append(recortar(frame, 0.18, 0.82, 0.0, 1.0, 720))
+        fotos.append((config.palabra_es(carpeta), jpeg(np.hstack(momentos))))
+    return fotos
+
+
 def fotos_con_movimiento(categoria):
     """-> lista de (nombre, imagen): el principio y el final del movimiento, uno al lado del otro."""
+    if categoria in config.DENTRO_DE:
+        return fotos_de_videos(categoria)
     fotos = []
     for carpeta in config.vocabulario(categoria):
         ruta = os.path.join(config.CARPETA_DATASET_LSA64, carpeta)
@@ -169,12 +208,13 @@ def main():
         "Señas Argentina (LSA). Muestra en pantalla qué seña vio y con cuánta confianza, y tiene un modo "
         "práctica que dice si la seña que hiciste es la que querías hacer.")
     doc.add_paragraph(
-        "Reconoce cuatro categorías: el abecedario, los números del 0 al 10, colores y palabras de uso "
-        "cotidiano. Todas están en la última parte de esta guía, con una imagen de cada una.")
+        "Reconoce cuatro categorías: el abecedario, los números del 0 al 10, colores y palabras. Las "
+        "palabras están en tres grupos: básicas de uso cotidiano, saludos y preguntas. Todas están en la "
+        "última parte de esta guía, con una imagen de cada una.")
 
     titulo(doc, "Cómo abrirla", 1)
     pasos(doc, [
-        "Abrí signalis-lsa.vercel.app en Chrome o Edge. No hay que instalar nada.",
+        "Abrí la página de SIGNALIS en el campus del instituto, con Chrome o Edge. No hay que instalar nada.",
         "Cuando el navegador pregunte, permití el uso de la cámara.",
         "La primera vez tarda un poco en cargar; después abre rápido.",
     ])
@@ -184,7 +224,8 @@ def main():
     titulo(doc, "Cómo se usa", 1)
     pasos(doc, [
         "Sentate de frente a la cámara, con buena luz, de modo que se vean la cara, los hombros y las manos.",
-        "Elegí una categoría en la barra de la izquierda o en «Explorar categorías».",
+        "Elegí una categoría en la barra de la izquierda o en «Explorar categorías». En Palabras, arriba de "
+        "la lista de señas se elige el grupo: Básicas, Saludos o Preguntas.",
         "Hacé la seña. A la derecha aparece la seña detectada y la confianza.",
         "Para practicar una seña puntual, tocala en la lista que aparece debajo de las categorías: la app "
         "te dice si lo que hiciste es esa seña o no.",
@@ -192,14 +233,15 @@ def main():
     puntos(doc, [
         "Letras y números: son posturas. Mantené la mano quieta medio segundo.",
         "Colores y palabras: son movimientos. Hacé la seña completa una vez y bajá la mano.",
+        "La mano que no usás puede quedar quieta a la vista, apoyada o a la altura de la cintura.",
         "Si hay más de una cámara conectada, se elige arriba a la derecha.",
     ])
 
     titulo(doc, "Cómo aprendió el sistema", 1)
     doc.add_paragraph(
         "El sistema aprendió las señas a partir de datos públicos: el conjunto LSA64 de la Universidad "
-        "Nacional de La Plata para los colores y las palabras, y videos educativos de LSA para el abecedario "
-        "y los números.")
+        "Nacional de La Plata para los colores y las palabras básicas, y videos educativos de LSA para el "
+        "abecedario, los números, los saludos y las preguntas.")
     doc.add_paragraph(
         "Una parte del trabajo la hizo el equipo de estudiantes, para pulirlo: probar cada seña frente a la "
         "cámara, registrar cuáles fallaban y con eso ajustar el sistema.")
@@ -213,7 +255,9 @@ def main():
         ("abecedario", "Las 27 letras. Algunas se hacen en un lugar preciso: la frente, la oreja, el mentón.", 2, 8.0),
         ("numeros", "Del 0 al 10.", 2, 8.0),
         ("colores", "Señas con movimiento.", 1, 15.5),
-        ("palabras", "Señas con movimiento.", 1, 15.5),
+        ("palabras", "Palabras básicas de uso cotidiano. Señas con movimiento.", 1, 15.5),
+        ("saludos", "Grupo de Palabras: saludos y fórmulas de cortesía. Señas con movimiento.", 1, 15.5),
+        ("preguntas", "Grupo de Palabras: palabras para preguntar. Señas con movimiento.", 1, 15.5),
     ]
     for categoria, nota, columnas, ancho in categorias:
         doc.add_page_break()
@@ -225,8 +269,9 @@ def main():
     titulo(doc, "Origen de las imágenes", 2)
     doc.add_paragraph(
         "Abecedario y números: videos «Alfabeto dactilológico LSA» y «Números en LSA» de la Dirección de "
-        "Documentación. Colores y palabras: dataset LSA64 de la Universidad Nacional de La Plata "
-        "(licencia CC BY-NC-SA).")
+        "Documentación. Saludos y preguntas: videos «Saludos y fórmulas de cortesía en LSA» y "
+        "«Organizadores de preguntas en LSA» de la Dirección de Documentación. Colores y palabras básicas: "
+        "dataset LSA64 de la Universidad Nacional de La Plata (licencia CC BY-NC-SA).")
 
     os.makedirs(os.path.dirname(SALIDA), exist_ok=True)
     doc.save(SALIDA)

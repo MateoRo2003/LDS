@@ -6,7 +6,8 @@
 import { FilesetResolver, HandLandmarker, PoseLandmarker } from './vendor/tasks-vision/vision_bundle.js';
 import { Modelo, crearSeguidor } from './motor.js';
 
-const CATEGORIAS = ['abecedario', 'numeros', 'colores', 'palabras'];
+// saludos y preguntas se muestran como grupos dentro de palabras
+const CATEGORIAS = ['abecedario', 'numeros', 'colores', 'palabras', 'saludos', 'preguntas'];
 const PUNTOS_CUERPO = [0, 11, 12];   // nariz y los dos hombros, en el modelo de pose
 const HISTORIAL_CORTO = 3;
 const ICONO_MANO = 'M12.5 2C11.1 2 10 3.1 10 4.5V11H8.5C7.1 11 6 12.1 6 13.5V19C6 20.7 7.3 22 9 22H15C16.7 22 18 20.7 18 19V4.5C18 3.1 16.9 2 15.5 2H12.5Z';
@@ -350,6 +351,11 @@ function elemento(etiqueta, clase, texto) {
   return el;
 }
 
+// La categoria que se muestra en el menu: la propia, o en la que esta como grupo.
+function grupoDe(id) {
+  return (modelos[id] && modelos[id].dentroDe) || id;
+}
+
 function elegirCategoria(id) {
   objetivo = null;
   resultadoPractica = null;
@@ -454,6 +460,14 @@ function dibujarSenas() {
   if (clave === senasDibujadas) return;
   senasDibujadas = clave;
   if (!modelo) return;
+  const grupos = CATEGORIAS.filter((id) => modelos[id] && grupoDe(id) === grupoDe(modelo.id));
+  $('grupos-senas').hidden = grupos.length < 2;
+  $('grupos-senas').replaceChildren(...grupos.map((id) => {
+    const nombre = modelos[id].dentroDe ? modelos[id].titulo : 'Básicas';
+    const boton = elemento('button', 'grupo' + (id === modelo.id ? ' active' : ''), nombre);
+    boton.addEventListener('click', () => elegirCategoria(id));
+    return boton;
+  }));
   $('titulo-senas').textContent = `Señas de ${modelo.titulo} — tocá una para practicarla`;
   $('lista-senas').replaceChildren(...modelo.nombres.filter((n) => n !== null).map((sena) => {
     const boton = elemento('button', 'sena' + (sena === objetivo ? ' active' : ''), sena);
@@ -507,14 +521,16 @@ function dibujar() {
   document.querySelectorAll('[data-cat]').forEach((boton) => {
     const disponible = !!modelos[boton.dataset.cat];
     boton.classList.toggle('disabled', !disponible && !cargando);
-    boton.classList.toggle('active', vista === 'inicio' && estado.categoria === boton.dataset.cat);
+    boton.classList.toggle('active', vista === 'inicio' && grupoDe(estado.categoria) === boton.dataset.cat);
     boton.title = disponible || cargando ? '' : 'Próximamente: esta categoría todavía no tiene señas';
   });
   document.querySelector('[data-vista="inicio"]').classList.toggle('active', vista === 'inicio' && !estado.categoria);
   document.querySelector('[data-vista="ajustes"]').classList.toggle('active', vista === 'ajustes');
   $('panel-categorias').hidden = vista !== 'inicio';
   $('panel-ajustes').hidden = vista !== 'ajustes';
-  $('titulo-vista').textContent = modelo ? `Reconocimiento en tiempo real · ${modelo.titulo}` : 'Reconocimiento en tiempo real';
+  const titulo = modelo && modelo.dentroDe && modelos[modelo.dentroDe]
+    ? `${modelos[modelo.dentroDe].titulo} · ${modelo.titulo}` : modelo && modelo.titulo;
+  $('titulo-vista').textContent = modelo ? `Reconocimiento en tiempo real · ${titulo}` : 'Reconocimiento en tiempo real';
   $('valor-umbral').textContent = Math.round(estado.ajustes.umbral * 100) + '%';
 
   const porcentaje = Math.round((estado.confianza || 0) * 100);

@@ -54,6 +54,18 @@ MANO_AGREGADA = {
                    "desde_el_final": (0.35, 0.08)},
 }
 
+# En LSA64 la mano que no participa casi nunca aparece (queda fuera de
+# cuadro o con el guante no se detecta), pero con una webcam sobre la
+# mesa suele verse quieta abajo. Sin ejemplos asi el modelo la toma como
+# parte de la seña: con una mano en reposo a la vista, Palabras pasaba de
+# reconocer 9 de cada 10 señas a menos de 4. A una parte de los clips de
+# una sola mano se le agrega una mano en reposo real, sacada de los
+# videos de letras (experimentos/manos_en_reposo.py).
+RUTA_MANOS_EN_REPOSO = os.path.join(config.PROYECTO, "datos", "propio", "manos_en_reposo.npz")
+CON_MANO_EN_REPOSO = 0.4
+_reposo = np.load(RUTA_MANOS_EN_REPOSO)
+MANOS_EN_REPOSO = np.split(_reposo["frames"], np.cumsum(_reposo["largos"])[:-1])
+
 
 def cargar_clips(categoria):
     """-> lista de (features (T, F), indice de clase, persona)."""
@@ -103,6 +115,23 @@ def con_mano_agregada(feats, agregada, rng):
     return s.reshape(len(feats), -1)
 
 
+def con_mano_en_reposo(feats, rng):
+    """El clip con una mano quieta abajo en el lugar que casi nunca se usa (si hay uno)."""
+    s = feats.reshape(len(feats), 2, M).copy()
+    presente = s[:, :, -1] > 0
+    libre = int(presente.mean(axis=0).argmin())
+    if presente[:, libre].mean() > 0.2:
+        return feats  # seña de dos manos: no hay mano libre
+    tramo = MANOS_EN_REPOSO[rng.integers(len(MANOS_EN_REPOSO))]
+    tramo = tramo[(np.arange(len(s)) + rng.integers(len(tramo))) % len(tramo)].copy()
+    if libre == 1:  # los tramos estan guardados como mano del lugar 0
+        tramo[:, 0:M - 3:3] *= -1
+        tramo[:, M - 3] *= -1
+    vacios = ~presente[:, libre]
+    s[vacios, libre] = tramo[vacios]
+    return s.reshape(len(feats), -1)
+
+
 def espejar(sec):
     """Como si la seña la hiciera un zurdo: invierte x y cruza las manos."""
     s = sec.reshape(len(sec), 2, M).copy()
@@ -118,10 +147,22 @@ def aumentar(feats, rng):
     bordes de la ventana, cada persona la hace en un lugar y tamaño
     apenas distinto, y la deteccion de la mano tiembla o se pierde.
     """
+    if rng.random() < CON_MANO_EN_REPOSO:
+        feats = con_mano_en_reposo(feats, rng)
     total = len(feats)
     desde = int(rng.uniform(0, 0.2) * total)
     hasta = total - int(rng.uniform(0, 0.2) * total)
-    sec = resamplear_secuencia(feats[desde:max(hasta, desde + 2)])
+    feats = feats[desde:max(hasta, desde + 2)]
+    # en vivo la ventana puede agarrar un rato sin seña antes o despues:
+    # manos fuera de cuadro o quietas donde quedaron
+    if rng.random() < 0.4:
+        antes, despues = (int(rng.uniform(0, 0.35) * len(feats)) for _ in range(2))
+        relleno = (lambda n, f: np.zeros((n, feats.shape[1]), np.float32)) if rng.random() < 0.5 \
+            else (lambda n, f: np.repeat(f[None], n, axis=0))
+        feats = np.concatenate([relleno(antes, feats[0]), feats, relleno(despues, feats[-1])])
+    # la misma seña mas lenta en una parte y mas rapida en otra
+    avance = np.linspace(0, 1, config.LONGITUD_SECUENCIA) ** rng.uniform(0.75, 1.33)
+    sec = feats[np.round(avance * (len(feats) - 1)).astype(int)]
     if rng.random() < 0.5:
         sec = espejar(sec)
 
@@ -158,9 +199,14 @@ def mano_quieta(feats, rng):
 
 
 def armar_conjunto(clips, clase_nada, rng, copias):
+    # Las señas que salen de un solo video tienen 1 o 2 clips contra los
+    # ~40 de LSA64: se repiten mas (siempre con variantes al azar) para
+    # que pesen lo mismo en el entrenamiento.
+    por_clase = np.bincount([c for _, c, _ in clips])
+    referencia = max(n for c, n in enumerate(por_clase) if c != clase_nada)
     X, y = [], []
     for feats, clase, _ in clips:
-        for _ in range(copias if clase != clase_nada else 1):
+        for _ in range(round(copias * referencia / por_clase[clase]) if clase != clase_nada else 1):
             X.append(aumentar(feats, rng))
             y.append(clase)
     for i in rng.choice(len(clips), int(len(clips) * QUIETAS_POR_CLIP), replace=False):
@@ -226,10 +272,11 @@ def main(categoria):
 
     print("\n=== Evaluacion en validacion (personas nunca vistas en train) ===")
     y_pred = np.argmax(modelo.predict(X_val, verbose=0), axis=1)
-    print(classification_report(y_val, y_pred, target_names=nombres_legibles, digits=3))
+    todas = list(range(len(clases)))  # en saludos y preguntas la validacion no tiene todas las señas
+    print(classification_report(y_val, y_pred, labels=todas, target_names=nombres_legibles, digits=3, zero_division=0))
     print("Matriz de confusion (filas=real, columnas=predicho):")
     print(nombres_legibles)
-    print(confusion_matrix(y_val, y_pred))
+    print(confusion_matrix(y_val, y_pred, labels=todas))
 
     ruta_modelo = config.ruta_modelo(categoria)
     ruta_etiquetas = config.ruta_etiquetas(categoria)

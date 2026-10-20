@@ -40,23 +40,25 @@ def ruta_crudo(carpeta_palabra, nombre_video):
 def clips_de_categoria(categoria):
     """Lista de (carpeta_palabra, nombre_video) que necesita la categoria."""
     vocab = config.vocabulario(categoria)
-    # En las computadoras que no tienen los videos de LSA64 (pesan 1.5GB)
-    # alcanza con los landmarks ya extraidos, que es lo que se reparte.
-    hay_videos = os.path.isdir(config.CARPETA_DATASET_LSA64)
-    base = config.CARPETA_DATASET_LSA64 if hay_videos else config.CARPETA_CRUDO
-    clips = []
-    for carpeta in sorted(os.listdir(base)):
-        ruta_carpeta = os.path.join(base, carpeta)
-        if not os.path.isdir(ruta_carpeta):
+    # Se juntan los videos de LSA64 con los landmarks ya extraidos: en las
+    # computadoras que no tienen los videos (pesan 1.5GB) alcanza con los
+    # landmarks, y los clips que salen de otros videos
+    # (experimentos/palabras_desde_videos.py) solo existen como landmarks.
+    encontrados = set()
+    for base in (config.CARPETA_DATASET_LSA64, config.CARPETA_CRUDO):
+        if not os.path.isdir(base):
             continue
-        for nombre in sorted(os.listdir(ruta_carpeta)):
-            if not hay_videos and nombre.endswith(".npz"):
-                nombre = nombre[:-4] + ".mp4"
-            if not nombre.lower().endswith(".mp4"):
+        for carpeta in os.listdir(base):
+            ruta_carpeta = os.path.join(base, carpeta)
+            if not os.path.isdir(ruta_carpeta):
                 continue
-            if carpeta in vocab or partes_de_nombre(nombre)[1] == config.REPETICION_NEGATIVOS:
-                clips.append((carpeta, nombre))
-    return clips
+            for nombre in os.listdir(ruta_carpeta):
+                if nombre.endswith(".npz"):
+                    nombre = nombre[:-4] + ".mp4"
+                if nombre.lower().endswith(".mp4"):
+                    encontrados.add((carpeta, nombre))
+    return [(carpeta, nombre) for carpeta, nombre in sorted(encontrados)
+            if carpeta in vocab or partes_de_nombre(nombre)[1] == config.REPETICION_NEGATIVOS]
 
 
 def extraer_de_video(clip):
