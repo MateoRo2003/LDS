@@ -165,8 +165,17 @@ def titulo(doc, texto, nivel):
 
 
 def pasos(doc, lista):
+    """Lista numerada que empieza en 1 (si no, Word sigue la numeracion de la lista anterior)."""
+    numeraciones = doc.part.numbering_part.numbering_definitions._numbering
+    num_estilo = doc.styles["List Number"].element.pPr.numPr.numId.val
+    abstracta = numeraciones.num_having_numId(num_estilo).abstractNumId.val
+    nueva = numeraciones.add_num(abstracta)
+    nueva.add_lvlOverride(ilvl=0).add_startOverride(1)
     for paso in lista:
-        doc.add_paragraph(paso, style="List Number")
+        parrafo = doc.add_paragraph(paso, style="List Number")
+        numpr = parrafo._p.get_or_add_pPr().get_or_add_numPr()
+        numpr.get_or_add_ilvl().val = 0
+        numpr.get_or_add_numId().val = nueva.numId
 
 
 def puntos(doc, lista):
@@ -191,14 +200,13 @@ def grilla_de_fotos(doc, fotos, columnas, ancho_cm):
             tramo.font.color.rgb = BORDO
 
 
-def main():
-    doc = Document()
-    doc.styles["Normal"].font.name = "Segoe UI"
-    doc.styles["Normal"].font.size = Pt(11)
-    for seccion in doc.sections:
-        seccion.left_margin = seccion.right_margin = Cm(2)
-        seccion.top_margin = seccion.bottom_margin = Cm(2)
-
+def escribir_guia(doc, titulo=titulo, ancho_util=17.0, compacta=False):
+    """
+    Escribe la guia en `doc`. La usa tambien el documento del proyecto
+    (generar_documento_proyecto.py), que la lleva como anexo con su propio
+    formato de titulos; ancho_util = cm entre los margenes. compacta = 3
+    letras y 2 señas con movimiento por fila, para que el anexo no sea largo.
+    """
     titulo(doc, "SIGNALIS", 0)
     doc.add_paragraph("Reconocimiento de Lengua de Señas Argentina. Guía del sistema y su vocabulario.")
 
@@ -260,6 +268,10 @@ def main():
         ("preguntas", "Grupo de Palabras: palabras para preguntar. Señas con movimiento.", 1, 15.5),
     ]
     for categoria, nota, columnas, ancho in categorias:
+        if compacta:
+            columnas = 3 if categoria in FOTOS_ESTATICAS else 2
+            ancho = ancho_util
+        ancho = min(ancho, ancho_util / columnas - 0.6)
         doc.add_page_break()
         titulo(doc, config.INFO_CATEGORIAS[categoria][0], 2)
         doc.add_paragraph(nota)
@@ -273,6 +285,15 @@ def main():
         "«Organizadores de preguntas en LSA» de la Dirección de Documentación. Colores y palabras básicas: "
         "dataset LSA64 de la Universidad Nacional de La Plata (licencia CC BY-NC-SA).")
 
+
+def main():
+    doc = Document()
+    doc.styles["Normal"].font.name = "Segoe UI"
+    doc.styles["Normal"].font.size = Pt(11)
+    for seccion in doc.sections:
+        seccion.left_margin = seccion.right_margin = Cm(2)
+        seccion.top_margin = seccion.bottom_margin = Cm(2)
+    escribir_guia(doc)
     os.makedirs(os.path.dirname(SALIDA), exist_ok=True)
     doc.save(SALIDA)
     print(f"{SALIDA}: {os.path.getsize(SALIDA) / 1e6:.1f} MB")
